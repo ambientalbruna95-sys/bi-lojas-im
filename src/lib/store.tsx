@@ -1054,6 +1054,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (cloudPushTimerRef.current) clearTimeout(cloudPushTimerRef.current);
     cloudPushTimerRef.current = setTimeout(() => {
+      cloudPushTimerRef.current = null;
       if (cloudPushBusyRef.current) return;
       cloudPushBusyRef.current = true;
 
