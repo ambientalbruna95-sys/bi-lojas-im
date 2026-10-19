@@ -24,6 +24,20 @@ export function Panel({ title, children, className = "", action }: { title?: str
   );
 }
 
+export function Avatar({ src, name, size = "md", className = "" }: { src?: string; name: string; size?: "sm" | "md" | "lg" | "xl"; className?: string }) {
+  const sizes = {
+    sm: "h-8 w-8 text-[10px]",
+    md: "h-10 w-10 text-xs",
+    lg: "h-14 w-14 text-base",
+    xl: "h-20 w-20 text-xl",
+  };
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "?";
+  if (src) {
+    return <img src={src} alt={`Foto de ${name}`} className={`${sizes[size]} shrink-0 rounded-full object-cover ring-1 ring-border ${className}`} />;
+  }
+  return <div aria-label={name} className={`${sizes[size]} grid shrink-0 place-items-center rounded-full bg-primary/12 font-black text-primary ring-1 ring-primary/20 ${className}`}>{initials}</div>;
+}
+
 export function Stat({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
   return (
     <div className={`relative overflow-hidden rounded-2xl border p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-primary/40 ${accent ? "border-primary/30 bg-gradient-to-br from-primary via-primary to-[#9e1020] text-primary-foreground red-glow" : "glass-panel premium-border"}`}>
