@@ -506,3 +506,65 @@ button, a, select, input, textarea { -webkit-tap-highlight-color: transparent; }
   background: rgba(24,24,27,.045);
   box-shadow: inset 0 0 0 1px rgba(24,24,27,.05);
 }
+
+/* Contrast guardrails — prevents white-on-white / dark-on-dark in both themes. */
+.light main [class~="text-white"]:not([class~="bg-primary"]):not([class*="bg-[#e51628]"]):not([class*="from-primary"]),
+.light header [class~="text-white"]:not([class~="bg-primary"]):not([class*="bg-[#e51628]"]):not([class*="from-primary"]),
+.light main [class*="text-white/"]:not([class~="bg-primary"]):not([class*="bg-[#e51628]"]):not([class*="from-primary"]),
+.light header [class*="text-white/"]:not([class~="bg-primary"]):not([class*="bg-[#e51628]"]):not([class*="from-primary"]) {
+  color: #24262b !important;
+}
+
+.light main [class~="bg-primary"],
+.light main [class~="bg-primary"] *,
+.light header [class~="bg-primary"],
+.light header [class~="bg-primary"] *,
+.light main [class*="from-primary"][class*="to-"],
+.light main [class*="from-primary"][class*="to-"] *,
+.light header [class*="from-primary"][class*="to-"],
+.light header [class*="from-primary"][class*="to-"] * {
+  color: #ffffff !important;
+}
+
+.light [class~="bg-white"] [class~="text-white"],
+.light [class~="bg-white"] [class*="text-white/"],
+.dark [class~="bg-white"] [class~="text-white"],
+.dark [class~="bg-white"] [class*="text-white/"] {
+  color: #17181b !important;
+}
+
+/* Login has a dark visual panel and a theme-aware form panel. */
+.light .login-panel {
+  background: #ffffff !important;
+  color: #1b1c1f !important;
+}
+.light .login-panel [class~="text-white"],
+.light .login-panel [class*="text-white/"] {
+  color: #1b1c1f !important;
+}
+.light .login-panel input,
+.light .login-panel select {
+  background: #ffffff !important;
+  color: #1b1c1f !important;
+  border-color: rgba(24,24,27,.16) !important;
+}
+.light .login-panel input::placeholder {
+  color: #858891 !important;
+}
+.light .login-panel select option {
+  background: #ffffff !important;
+  color: #1b1c1f !important;
+}
+.light .login-panel .bg-primary,
+.light .login-panel .bg-primary *,
+.light .login-panel [class*="from-primary"][class*="to-"],
+.light .login-panel [class*="from-primary"][class*="to-"] * {
+  color: #ffffff !important;
+}
+
+.dark main [class~="bg-white"],
+.dark main [class~="bg-white"] *,
+.dark header [class~="bg-white"],
+.dark header [class~="bg-white"] * {
+  color: #17181b;
+}
