@@ -9,6 +9,7 @@ import {
 import { brl, uid, useApp, type Perfil } from "@/lib/store";
 import { ImzinhoChat } from "@/components/ImzinhoChat";
 import { competenciaAtiva, dataLembreteCompetencia, despesaAlertaAtual, pagaNaCompetencia, vencimentoCompetencia } from "@/lib/despesas-fixas";
+import { clearCloudAuth, setCloudAuth } from "@/lib/cloud-sync";
 
 type NavItem = { to: string; label: string; icon: any; perfis: Perfil[] | "all" };
 
@@ -74,6 +75,7 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
       return;
     }
     setErro("");
+    setCloudAuth({ userId: u.id, password: senha });
     set((st) => ({
       ...st,
       autenticado: true,
@@ -391,7 +393,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigate({to:"/atividades"});
   };
 
-  const sair = () => set((st) => ({ ...st, autenticado: false, usuarioAtivoId: "" }));
+  const sair = () => {
+    clearCloudAuth();
+    set((st) => ({ ...st, autenticado: false, usuarioAtivoId: "" }));
+  };
 
   const nav = (
     <nav className="flex flex-col gap-2 px-3 pb-5">
