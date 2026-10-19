@@ -6,6 +6,45 @@ export type CloudAuth = {
   password: string;
 };
 
+
+export type CloudDirectoryUser = {
+  id: string;
+  nome: string;
+  perfil: string;
+  ativo: boolean;
+  vinculoId?: string;
+  email?: string;
+  observacao?: string;
+};
+
+async function publicRequest<T extends Record<string, unknown>>(
+  action: string,
+  payload: Record<string, unknown> = {},
+): Promise<T & { ok: boolean; error?: string }> {
+  const response = await fetch(CLOUD_SYNC_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...payload }),
+  });
+
+  const data = await response.json().catch(() => ({})) as T & { ok?: boolean; error?: string };
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || "Não foi possível acessar a base central.");
+  }
+  return { ...data, ok: true } as T & { ok: boolean; error?: string };
+}
+
+export function fetchCloudDirectory() {
+  return publicRequest<{ empty?: boolean; users?: CloudDirectoryUser[]; version?: number }>("directory");
+}
+
+export function authenticateCloudUser(userId: string, password: string) {
+  return publicRequest<{ empty?: boolean; user?: CloudDirectoryUser; version?: number }>("authenticate", {
+    userId,
+    password,
+  });
+}
+
 export type CloudPullResponse = {
   ok: boolean;
   empty?: boolean;
