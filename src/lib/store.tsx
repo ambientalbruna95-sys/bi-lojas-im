@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { initCloudState, pullCloudState, pushCloudState } from "@/lib/cloud-sync";
+import { initCloudState, mergeLegacyCloudState, pullCloudState, pushCloudState } from "@/lib/cloud-sync";
 
 export type Perfil = "Master" | "Diretoria" | "Gerente de Marketing" | "Coordenação" | "Funcionário" | "Influencer";
 export const PERFIS: Perfil[] = ["Master", "Diretoria", "Gerente de Marketing", "Coordenação", "Funcionário", "Influencer"];
@@ -860,6 +860,7 @@ function withTaskActivities(rawState: AppState): AppState {
 
 const RESULTADOS_STORAGE_KEY = "bi-lojas-im-resultados-v1";
 const OPERACIONAL_STORAGE_KEY = "bi-lojas-im-operacional-v1";
+const CLOUD_MIGRATION_KEY = "bi-cloud-legacy-migrated-v1";
 
 function sharedStateFromApp(state: AppState): Record<string, unknown> {
   return {
@@ -1006,8 +1007,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const sincronizarEntrada = async () => {
       try {
-        const remote = await pullCloudState();
+        let remote = await pullCloudState();
         if (cancelled || cloudUserRef.current !== s.usuarioAtivoId) return;
+
+        // Uma única vez por navegador, incorpora os dados antigos que este
+        // computador possuía antes da centralização. Isso recupera tarefas,
+        // campanhas e demais alterações feitas pela equipe em máquinas diferentes.
+        if (!remote.empty && window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1") {
+          try {
+            const migrated = await mergeLegacyCloudState(sharedStateFromApp(s));
+            if (migrated.state) {
+              remote = migrated;
+            }
+            window.localStorage.setItem(CLOUD_MIGRATION_KEY, "1");
+          } catch (error) {
+            console.error("[CloudSync] Falha ao incorporar dados antigos deste computador:", error);
+          }
+        }
 
         if (remote.empty) {
           if (s.perfil !== "Master") {
@@ -1025,6 +1041,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (initialized.state) {
             setS((current) => applySharedState(current, initialized.state as Record<string, unknown>));
           }
+          try { window.localStorage.setItem(CLOUD_MIGRATION_KEY, "1"); } catch {}
           setCloudReady(true);
           return;
         }
