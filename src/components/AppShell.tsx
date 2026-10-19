@@ -9,7 +9,7 @@ import {
 import { brl, uid, useApp, type Perfil } from "@/lib/store";
 import { ImzinhoChat } from "@/components/ImzinhoChat";
 import { competenciaAtiva, dataLembreteCompetencia, despesaAlertaAtual, pagaNaCompetencia, vencimentoCompetencia } from "@/lib/despesas-fixas";
-import { clearCloudAuth, setCloudAuth } from "@/lib/cloud-sync";
+import { authenticateCloudUser, clearCloudAuth, fetchCloudDirectory, setCloudAuth, type CloudDirectoryUser } from "@/lib/cloud-sync";
 
 type NavItem = { to: string; label: string; icon: any; perfis: Perfil[] | "all" };
 
@@ -60,29 +60,94 @@ const pode = (item: NavItem, perfil: Perfil) => item.perfis === "all" || item.pe
 
 function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"light")=>void}) {
   const { s, set } = useApp();
-  const ativos = s.usuarios.filter((u) => u.ativo);
+  const locais = s.usuarios.filter((u) => u.ativo);
+  const [directory, setDirectory] = useState<CloudDirectoryUser[]>([]);
+  const ativos = directory.length ? directory : locais;
   const [userId, setUserId] = useState(ativos[0]?.id ?? "");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
   const [erro, setErro] = useState("");
+  const [entrando, setEntrando] = useState(false);
 
-  const entrar = () => {
-    const u = ativos.find((x) => x.id === userId);
-    if (!u) return;
-    const senhaCorreta = u.senha || "123456";
-    if (senha !== senhaCorreta) {
-      setErro("Senha incorreta.");
-      return;
-    }
+  useEffect(() => {
+    let ativo = true;
+    void fetchCloudDirectory()
+      .then((result) => {
+        if (!ativo || result.empty || !result.users?.length) return;
+        setDirectory(result.users);
+        setUserId((atual) => result.users?.some((u) => u.id === atual) ? atual : (result.users?.[0]?.id || ""));
+      })
+      .catch((error) => {
+        console.warn("[CloudSync] Diretório central indisponível no login:", error);
+      });
+    return () => { ativo = false; };
+  }, []);
+
+  const entrar = async () => {
+    if (entrando) return;
+    setEntrando(true);
     setErro("");
-    setCloudAuth({ userId: u.id, password: senha });
-    set((st) => ({
-      ...st,
-      autenticado: true,
-      usuarioAtivoId: u.id,
-      perfil: u.perfil,
-      influencerAtivaId: u.perfil === "Influencer" ? (u.vinculoId || st.influencerAtivaId) : st.influencerAtivaId,
-    }));
+
+    try {
+      const remote = await authenticateCloudUser(userId, senha);
+
+      if (!remote.empty && remote.user) {
+        const u = remote.user;
+        setCloudAuth({ userId: u.id, password: senha });
+        set((st) => ({
+          ...st,
+          autenticado: true,
+          usuarioAtivoId: u.id,
+          perfil: u.perfil as Perfil,
+          influencerAtivaId: u.perfil === "Influencer" ? (u.vinculoId || st.influencerAtivaId) : st.influencerAtivaId,
+        }));
+        return;
+      }
+
+      const local = locais.find((x) => x.id === userId);
+      if (!local || local.perfil !== "Master") {
+        setErro("A base central ainda precisa ser inicializada pelo Master.");
+        return;
+      }
+      if (senha !== (local.senha || "123456")) {
+        setErro("Senha incorreta.");
+        return;
+      }
+
+      setCloudAuth({ userId: local.id, password: senha });
+      set((st) => ({
+        ...st,
+        autenticado: true,
+        usuarioAtivoId: local.id,
+        perfil: local.perfil,
+        influencerAtivaId: st.influencerAtivaId,
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível entrar.";
+      if (message.toLowerCase().includes("senha incorreta")) {
+        setErro("Senha incorreta.");
+        return;
+      }
+
+      // Contingência: se a nuvem estiver momentaneamente indisponível, o login
+      // local ainda permite acesso e a sincronização tenta se recuperar depois.
+      const local = locais.find((x) => x.id === userId);
+      if (!local || senha !== (local.senha || "123456")) {
+        setErro(message);
+        return;
+      }
+
+      setCloudAuth({ userId: local.id, password: senha });
+      set((st) => ({
+        ...st,
+        autenticado: true,
+        usuarioAtivoId: local.id,
+        perfil: local.perfil,
+        influencerAtivaId: local.perfil === "Influencer" ? (local.vinculoId || st.influencerAtivaId) : st.influencerAtivaId,
+      }));
+    } finally {
+      setEntrando(false);
+    }
   };
 
   return (
@@ -164,15 +229,15 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
                 </div>
                 <div className="relative">
                   <LockKeyhole className="absolute left-4 top-[17px] h-5 w-5 text-white/40" />
-                  <input type={showSenha ? "text" : "password"} className="h-14 w-full rounded-2xl border border-white/10 bg-[#242428] py-2 pl-12 pr-12 text-sm font-semibold text-white shadow-inner outline-none transition placeholder:text-white/35 focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Digite sua senha" value={senha} onChange={(e) => setSenha(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter")entrar()}} />
+                  <input type={showSenha ? "text" : "password"} className="h-14 w-full rounded-2xl border border-white/10 bg-[#242428] py-2 pl-12 pr-12 text-sm font-semibold text-white shadow-inner outline-none transition placeholder:text-white/35 focus:border-primary focus:ring-4 focus:ring-primary/10" placeholder="Digite sua senha" value={senha} onChange={(e) => setSenha(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter") void entrar()}} />
                   <button type="button" aria-label={showSenha?"Ocultar senha":"Mostrar senha"} onClick={()=>setShowSenha(!showSenha)} className="absolute right-4 top-[17px] text-white/40 transition hover:text-white">{showSenha?<EyeOff className="h-5 w-5"/>:<Eye className="h-5 w-5"/>}</button>
                 </div>
               </label>
 
               {erro && <div className="rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5 text-xs font-semibold text-primary">{erro}</div>}
               
-              <button type="button" onClick={entrar} className="group relative h-14 w-full overflow-hidden rounded-2xl bg-primary px-4 text-sm font-black text-primary-foreground shadow-[0_10px_30px_rgba(229,22,40,.28)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(229,22,40,.34)]">
-                <span className="relative z-10 inline-flex items-center gap-2">Entrar no centro de comando <TrendingUp className="h-4 w-4 transition-transform group-hover:translate-x-1"/></span>
+              <button type="button" onClick={()=>void entrar()} disabled={entrando} className="group relative h-14 w-full overflow-hidden rounded-2xl bg-primary px-4 text-sm font-black text-primary-foreground shadow-[0_10px_30px_rgba(229,22,40,.28)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(229,22,40,.34)] disabled:cursor-wait disabled:opacity-70">
+                <span className="relative z-10 inline-flex items-center gap-2">{entrando ? "Conectando à nuvem..." : "Entrar no centro de comando"} <TrendingUp className="h-4 w-4 transition-transform group-hover:translate-x-1"/></span>
                 <span className="absolute inset-y-0 -left-24 w-24 skew-x-[-18deg] bg-white/20 transition-all duration-700 group-hover:left-[120%]" />
               </button>
 
