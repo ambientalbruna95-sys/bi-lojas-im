@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { initCloudState, pullCloudState, pushCloudState } from "@/lib/cloud-sync";
 
 export type Perfil = "Master" | "Diretoria" | "Gerente de Marketing" | "Coordenação" | "Funcionário" | "Influencer";
 export const PERFIS: Perfil[] = ["Master", "Diretoria", "Gerente de Marketing", "Coordenação", "Funcionário", "Influencer"];
@@ -860,9 +861,71 @@ function withTaskActivities(rawState: AppState): AppState {
 const RESULTADOS_STORAGE_KEY = "bi-lojas-im-resultados-v1";
 const OPERACIONAL_STORAGE_KEY = "bi-lojas-im-operacional-v1";
 
+function sharedStateFromApp(state: AppState): Record<string, unknown> {
+  return {
+    filiais: state.filiais,
+    influencers: state.influencers,
+    funcionarios: state.funcionarios,
+    avaliacoes: state.avaliacoes,
+    trafegoPago: state.trafegoPago,
+    campanhas: state.campanhas,
+    metas: state.metas,
+    vendas: state.vendas,
+    resultadosDiarios: state.resultadosDiarios,
+    pendencias: state.pendencias,
+    volantes: state.volantes,
+    custos: state.custos,
+    despesasFixas: state.despesasFixas,
+    contratos: state.contratos,
+    usuarios: state.usuarios,
+    conexoesSociais: state.conexoesSociais,
+    metricasSociais: state.metricasSociais,
+    coresResponsaveis: state.coresResponsaveis,
+    rotinasDiarias: state.rotinasDiarias,
+    reinauguracoes: state.reinauguracoes,
+  };
+}
+
+function applySharedState(current: AppState, remote: Record<string, unknown>): AppState {
+  const next: AppState = {
+    ...current,
+    ...(Array.isArray(remote.filiais) ? { filiais: remote.filiais as AppState["filiais"] } : {}),
+    ...(Array.isArray(remote.influencers) ? { influencers: remote.influencers as AppState["influencers"] } : {}),
+    ...(Array.isArray(remote.funcionarios) ? { funcionarios: remote.funcionarios as AppState["funcionarios"] } : {}),
+    ...(Array.isArray(remote.avaliacoes) ? { avaliacoes: remote.avaliacoes as AppState["avaliacoes"] } : {}),
+    ...(Array.isArray(remote.trafegoPago) ? { trafegoPago: remote.trafegoPago as AppState["trafegoPago"] } : {}),
+    ...(Array.isArray(remote.campanhas) ? { campanhas: remote.campanhas as AppState["campanhas"] } : {}),
+    ...(Array.isArray(remote.metas) ? { metas: remote.metas as AppState["metas"] } : {}),
+    ...(Array.isArray(remote.vendas) ? { vendas: remote.vendas as AppState["vendas"] } : {}),
+    ...(Array.isArray(remote.resultadosDiarios) ? { resultadosDiarios: remote.resultadosDiarios as AppState["resultadosDiarios"] } : {}),
+    ...(Array.isArray(remote.pendencias) ? { pendencias: remote.pendencias as AppState["pendencias"] } : {}),
+    ...(Array.isArray(remote.volantes) ? { volantes: remote.volantes as AppState["volantes"] } : {}),
+    ...(Array.isArray(remote.custos) ? { custos: remote.custos as AppState["custos"] } : {}),
+    ...(Array.isArray(remote.despesasFixas) ? { despesasFixas: remote.despesasFixas as AppState["despesasFixas"] } : {}),
+    ...(Array.isArray(remote.contratos) ? { contratos: remote.contratos as AppState["contratos"] } : {}),
+    ...(Array.isArray(remote.usuarios) ? { usuarios: remote.usuarios as AppState["usuarios"] } : {}),
+    ...(Array.isArray(remote.conexoesSociais) ? { conexoesSociais: remote.conexoesSociais as AppState["conexoesSociais"] } : {}),
+    ...(Array.isArray(remote.metricasSociais) ? { metricasSociais: remote.metricasSociais as AppState["metricasSociais"] } : {}),
+    ...(remote.coresResponsaveis && typeof remote.coresResponsaveis === "object"
+      ? { coresResponsaveis: remote.coresResponsaveis as AppState["coresResponsaveis"] }
+      : {}),
+    ...(Array.isArray(remote.rotinasDiarias) ? { rotinasDiarias: remote.rotinasDiarias as AppState["rotinasDiarias"] } : {}),
+    ...(Array.isArray(remote.reinauguracoes) ? { reinauguracoes: remote.reinauguracoes as AppState["reinauguracoes"] } : {}),
+  };
+
+  return withTaskActivities(normalizeMuzambinhoAssignments(next));
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<AppState>(() => withTaskActivities(normalizeMuzambinhoAssignments(initial)));
   const [resultadosStorageReady, setResultadosStorageReady] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
+  const cloudVersionRef = useRef(0);
+  const cloudUserRef = useRef("");
+  const lastCloudPayloadRef = useRef("");
+  const cloudPushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cloudPullBusyRef = useRef(false);
+  const cloudPushBusyRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -919,12 +982,133 @@ export function AppProvider({ children }: { children: ReactNode }) {
         coresResponsaveis: s.coresResponsaveis,
       }));
     } catch {
-      // Mantém o uso normal mesmo sem persistência local.
+      // O cache local é só contingência; a fonte principal passa a ser a nuvem.
     }
   }, [s.resultadosDiarios, s.campanhas, s.contratos, s.influencers, s.usuarios, s.metas, s.pendencias, s.funcionarios, s.custos, s.despesasFixas, s.reinauguracoes, s.rotinasDiarias, s.coresResponsaveis, resultadosStorageReady]);
 
+  // Sempre que muda o usuário autenticado, reinicia a sessão de sincronização.
+  useEffect(() => {
+    setCloudReady(false);
+    cloudVersionRef.current = 0;
+    cloudUserRef.current = s.usuarioAtivoId;
+    lastCloudPayloadRef.current = "";
+    if (cloudPushTimerRef.current) {
+      clearTimeout(cloudPushTimerRef.current);
+      cloudPushTimerRef.current = null;
+    }
+  }, [s.autenticado, s.usuarioAtivoId]);
+
+  // Login: baixa a base central. Na primeira utilização, o Master envia a base
+  // local atual e transforma a nuvem na fonte única para todos os computadores.
+  useEffect(() => {
+    if (!resultadosStorageReady || !s.autenticado || !s.usuarioAtivoId || cloudReady) return;
+    let cancelled = false;
+
+    const sincronizarEntrada = async () => {
+      try {
+        const remote = await pullCloudState();
+        if (cancelled || cloudUserRef.current !== s.usuarioAtivoId) return;
+
+        if (remote.empty) {
+          if (s.perfil !== "Master") {
+            console.warn("[CloudSync] Base central ainda aguarda inicialização pelo Master.");
+            return;
+          }
+
+          const localPayload = sharedStateFromApp(s);
+          const initialized = await initCloudState(localPayload);
+          if (cancelled) return;
+
+          const finalState = initialized.state || localPayload;
+          cloudVersionRef.current = Number(initialized.version || 1);
+          lastCloudPayloadRef.current = JSON.stringify(finalState);
+          if (initialized.state) {
+            setS((current) => applySharedState(current, initialized.state as Record<string, unknown>));
+          }
+          setCloudReady(true);
+          return;
+        }
+
+        if (remote.state) {
+          cloudVersionRef.current = Number(remote.version || 0);
+          lastCloudPayloadRef.current = JSON.stringify(remote.state);
+          setS((current) => applySharedState(current, remote.state as Record<string, unknown>));
+          setCloudReady(true);
+        }
+      } catch (error) {
+        console.error("[CloudSync] Falha ao carregar base central:", error);
+      }
+    };
+
+    void sincronizarEntrada();
+    return () => { cancelled = true; };
+  }, [resultadosStorageReady, s.autenticado, s.usuarioAtivoId, s.perfil, cloudReady]);
+
+  // Toda alteração operacional é enviada automaticamente para a nuvem.
+  useEffect(() => {
+    if (!resultadosStorageReady || !s.autenticado || !cloudReady) return;
+
+    const payload = sharedStateFromApp(s);
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastCloudPayloadRef.current) return;
+
+    if (cloudPushTimerRef.current) clearTimeout(cloudPushTimerRef.current);
+    cloudPushTimerRef.current = setTimeout(() => {
+      if (cloudPushBusyRef.current) return;
+      cloudPushBusyRef.current = true;
+
+      void pushCloudState(payload)
+        .then((result) => {
+          cloudVersionRef.current = Number(result.version || cloudVersionRef.current);
+          lastCloudPayloadRef.current = serialized;
+        })
+        .catch((error) => {
+          console.error("[CloudSync] Falha ao salvar na nuvem:", error);
+        })
+        .finally(() => {
+          cloudPushBusyRef.current = false;
+        });
+    }, 650);
+
+    return () => {
+      if (cloudPushTimerRef.current) {
+        clearTimeout(cloudPushTimerRef.current);
+        cloudPushTimerRef.current = null;
+      }
+    };
+  }, [s, resultadosStorageReady, cloudReady]);
+
+  // Atualiza este computador quando outra pessoa altera a base.
+  useEffect(() => {
+    if (!resultadosStorageReady || !s.autenticado || !cloudReady) return;
+
+    const atualizarDeOutroComputador = async () => {
+      if (cloudPullBusyRef.current || cloudPushBusyRef.current || cloudPushTimerRef.current) return;
+      cloudPullBusyRef.current = true;
+
+      try {
+        const remote = await pullCloudState();
+        const version = Number(remote.version || 0);
+        if (remote.state && version > cloudVersionRef.current) {
+          const serialized = JSON.stringify(remote.state);
+          cloudVersionRef.current = version;
+          lastCloudPayloadRef.current = serialized;
+          setS((current) => applySharedState(current, remote.state as Record<string, unknown>));
+        }
+      } catch (error) {
+        console.error("[CloudSync] Falha ao buscar alterações:", error);
+      } finally {
+        cloudPullBusyRef.current = false;
+      }
+    };
+
+    const interval = window.setInterval(() => { void atualizarDeOutroComputador(); }, 6000);
+    return () => window.clearInterval(interval);
+  }, [resultadosStorageReady, s.autenticado, s.usuarioAtivoId, cloudReady]);
+
   return <AppCtx.Provider value={{ s, set: (fn) => setS((p) => withTaskActivities(normalizeMuzambinhoAssignments(fn(p)))) }}>{children}</AppCtx.Provider>;
 }
+
 export function useApp() {
   const c = useContext(AppCtx);
   if (!c) throw new Error("AppProvider missing");
