@@ -179,7 +179,7 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
 
           <div className="relative z-10 flex items-center justify-between p-8 xl:p-10">
             <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 pr-5 shadow-2xl backdrop-blur-md">
-              <div aria-label="Lojas IM" className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-[22px] font-black lowercase tracking-[-.08em] text-white shadow-brand">im</div>
+              <img src="/logo-lojas-im.svg" alt="Lojas IM" width="48" height="48" className="h-12 w-12 shrink-0 rounded-xl object-contain" />
               <div>
                 <div className="font-display text-lg font-black tracking-tight">BI Marketing</div>
                 <div className="text-[10px] font-bold uppercase tracking-[.18em] text-white/55">Lojas IM</div>
@@ -212,7 +212,7 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
           <div className="absolute right-8 top-8 hidden rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5 text-[11px] font-semibold text-white/55 shadow-sm backdrop-blur md:block">Marketing Intelligence</div>
           <div className="w-full max-w-[470px] py-[max(8px,env(safe-area-inset-top))]">
             <div className="mb-5 flex items-center gap-3 sm:mb-7 lg:hidden">
-              <div aria-label="Lojas IM" className="grid h-14 w-14 place-items-center rounded-xl bg-primary text-2xl font-black lowercase tracking-[-.08em] text-white shadow-brand">im</div>
+              <img src="/logo-lojas-im.svg" alt="Lojas IM" width="56" height="56" className="h-14 w-14 shrink-0 rounded-xl object-contain" />
               <div><div className="font-display text-xl font-black text-white">BI Marketing</div><div className="text-sm text-white/45">Lojas IM</div></div>
             </div>
 
@@ -505,7 +505,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const brand = <div className="px-4 pb-4 pt-5">
     <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[.025] p-3">
-      <div aria-label="Lojas IM" className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-xl font-black lowercase tracking-[-.08em] text-white shadow-brand">im</div>
+      <img src="/logo-lojas-im.svg" alt="Lojas IM" width="44" height="44" className="h-11 w-11 shrink-0 rounded-xl object-contain" />
       <div className="min-w-0 leading-tight">
         <div className="font-display text-sm font-black text-sidebar-foreground">BI Marketing</div>
         <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[.16em] text-sidebar-foreground/40">Lojas IM</div>
