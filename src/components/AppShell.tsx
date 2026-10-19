@@ -133,7 +133,7 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
           </div>
         </section>
 
-        <section className="relative flex min-h-[100dvh] items-center justify-center bg-[#111214] px-4 py-6 sm:min-h-0 sm:px-5 sm:py-8 md:px-10 lg:px-12 lg:py-10">
+        <section className="login-panel relative flex min-h-[100dvh] items-center justify-center bg-[#111214] px-4 py-6 sm:min-h-0 sm:px-5 sm:py-8 md:px-10 lg:px-12 lg:py-10">
           <div className="absolute right-8 top-8 hidden rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5 text-[11px] font-semibold text-white/55 shadow-sm backdrop-blur md:block">Marketing Intelligence</div>
           <div className="w-full max-w-[470px] py-[max(8px,env(safe-area-inset-top))]">
             <div className="mb-5 flex items-center gap-3 sm:mb-7 lg:hidden">
