@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
-import { Download, Eye, EyeOff, HardDriveDownload, KeyRound, Save, Upload, UserRound } from "lucide-react";
+import { Cloud, Download, Eye, EyeOff, HardDriveDownload, KeyRound, Save, Upload, UserRound } from "lucide-react";
 import { useApp, type AppState } from "@/lib/store";
 import { PageHeader, Panel, Btn, Field, inputCls, Badge, pageHead } from "@/components/kit";
+import { createCloudBackup, setCloudAuth } from "@/lib/cloud-sync";
 
 export const Route = createFileRoute("/configuracoes")({
   head: pageHead("Configurações", "Configurações pessoais de acesso ao BI Lojas IM."),
@@ -24,19 +25,26 @@ function Page() {
 
   const exportarBackup = () => {
     const dados: Partial<AppState> = {
-      despesasFixas: s.despesasFixas,
-      campanhas: s.campanhas,
-      contratos: s.contratos,
+      filiais: s.filiais,
       influencers: s.influencers,
-      usuarios: s.usuarios,
-      metas: s.metas,
-      pendencias: s.pendencias,
       funcionarios: s.funcionarios,
-      custos: s.custos,
-      reinauguracoes: s.reinauguracoes,
-      rotinasDiarias: s.rotinasDiarias,
-      coresResponsaveis: s.coresResponsaveis,
+      avaliacoes: s.avaliacoes,
+      trafegoPago: s.trafegoPago,
+      campanhas: s.campanhas,
+      metas: s.metas,
+      vendas: s.vendas,
       resultadosDiarios: s.resultadosDiarios,
+      pendencias: s.pendencias,
+      volantes: s.volantes,
+      custos: s.custos,
+      despesasFixas: s.despesasFixas,
+      contratos: s.contratos,
+      usuarios: s.usuarios,
+      conexoesSociais: s.conexoesSociais,
+      metricasSociais: s.metricasSociais,
+      coresResponsaveis: s.coresResponsaveis,
+      rotinasDiarias: s.rotinasDiarias,
+      reinauguracoes: s.reinauguracoes,
     };
 
     const payload = {
@@ -84,7 +92,7 @@ function Page() {
         throw new Error("Arquivo de backup inválido.");
       }
 
-      if (!confirm("Restaurar este backup neste computador? Os dados locais atuais serão substituídos pelos dados do arquivo.")) {
+      if (!confirm("Restaurar este arquivo no sistema? Como a sincronização é central, os dados restaurados serão enviados para a nuvem e aparecerão para os outros usuários.")) {
         if (backupInputRef.current) backupInputRef.current.value = "";
         return;
       }
@@ -92,26 +100,46 @@ function Page() {
       const dados = payload.dados;
       set((st) => ({
         ...st,
+        ...(Array.isArray(dados.filiais) ? { filiais: dados.filiais } : {}),
+        ...(Array.isArray(dados.influencers) ? { influencers: dados.influencers } : {}),
+        ...(Array.isArray(dados.funcionarios) ? { funcionarios: dados.funcionarios } : {}),
+        ...(Array.isArray(dados.avaliacoes) ? { avaliacoes: dados.avaliacoes } : {}),
+        ...(Array.isArray(dados.trafegoPago) ? { trafegoPago: dados.trafegoPago } : {}),
         ...(Array.isArray(dados.despesasFixas) ? { despesasFixas: dados.despesasFixas } : {}),
         ...(Array.isArray(dados.campanhas) ? { campanhas: dados.campanhas } : {}),
         ...(Array.isArray(dados.contratos) ? { contratos: dados.contratos } : {}),
-        ...(Array.isArray(dados.influencers) ? { influencers: dados.influencers } : {}),
         ...(Array.isArray(dados.usuarios) ? { usuarios: dados.usuarios } : {}),
         ...(Array.isArray(dados.metas) ? { metas: dados.metas } : {}),
+        ...(Array.isArray(dados.vendas) ? { vendas: dados.vendas } : {}),
+        ...(Array.isArray(dados.volantes) ? { volantes: dados.volantes } : {}),
         ...(Array.isArray(dados.pendencias) ? { pendencias: dados.pendencias } : {}),
-        ...(Array.isArray(dados.funcionarios) ? { funcionarios: dados.funcionarios } : {}),
         ...(Array.isArray(dados.custos) ? { custos: dados.custos } : {}),
+        ...(Array.isArray(dados.conexoesSociais) ? { conexoesSociais: dados.conexoesSociais } : {}),
+        ...(Array.isArray(dados.metricasSociais) ? { metricasSociais: dados.metricasSociais } : {}),
         ...(Array.isArray(dados.reinauguracoes) ? { reinauguracoes: dados.reinauguracoes } : {}),
         ...(Array.isArray(dados.rotinasDiarias) ? { rotinasDiarias: dados.rotinasDiarias } : {}),
         ...(Array.isArray(dados.resultadosDiarios) ? { resultadosDiarios: dados.resultadosDiarios } : {}),
         ...(dados.coresResponsaveis && typeof dados.coresResponsaveis === "object" ? { coresResponsaveis: dados.coresResponsaveis } : {}),
       }));
 
-      setBackupMsg({ tipo: "ok", texto: "Backup restaurado com sucesso neste computador." });
+      setBackupMsg({ tipo: "ok", texto: "Arquivo restaurado. A sincronização automática enviará esses dados para a nuvem." });
     } catch (error) {
       setBackupMsg({ tipo: "erro", texto: error instanceof Error ? error.message : "Não foi possível restaurar o backup." });
     } finally {
       if (backupInputRef.current) backupInputRef.current.value = "";
+    }
+  };
+
+  const criarBackupNaNuvem = async () => {
+    try {
+      setBackupMsg(null);
+      const result = await createCloudBackup();
+      const quando = result.createdAt
+        ? new Date(result.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+        : "agora";
+      setBackupMsg({ tipo: "ok", texto: `Backup central criado com sucesso em ${quando}.` });
+    } catch (error) {
+      setBackupMsg({ tipo: "erro", texto: error instanceof Error ? error.message : "Não foi possível criar o backup central." });
     }
   };
 
@@ -133,6 +161,7 @@ function Page() {
       ...st,
       usuarios: st.usuarios.map((u) => u.id === usuario.id ? { ...u, senha: nova } : u),
     }));
+    setCloudAuth({ userId: usuario.id, password: nova });
     setAtual("");
     setNova("");
     setConfirmar("");
@@ -190,34 +219,38 @@ function Page() {
       {usuario.perfil === "Master" && (
         <div className="mt-4">
           <Panel
-            title="Backup deste computador"
-            action={<Badge tone="primary">Somente Master</Badge>}
+            title="Sincronização e backup na nuvem"
+            action={<Badge tone="success">Automático</Badge>}
           >
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div className="flex min-w-0 items-start gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-                  <HardDriveDownload className="h-6 w-6" />
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-success/10 text-success">
+                  <Cloud className="h-6 w-6" />
                 </div>
                 <div className="min-w-0">
-                  <div className="font-display text-lg font-black">Cópia de segurança local</div>
+                  <div className="font-display text-lg font-black">Uma base única para toda a equipe</div>
                   <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                    Exporte uma cópia dos dados salvos neste navegador antes de trocar de computador, limpar o navegador ou fazer mudanças grandes no sistema.
-                    O arquivo pode ser restaurado depois em outro computador.
+                    As alterações feitas por qualquer usuário são salvas automaticamente na nuvem e aparecem nos outros computadores.
+                    O navegador continua guardando uma cópia local apenas como contingência.
                   </p>
-                  <div className="mt-3 text-xs font-semibold text-muted-foreground">
-                    Inclui campanhas, atividades, usuários, influencers, reinaugurações, custos, metas e resultados importados.
+                  <div className="mt-3 rounded-xl border border-success/20 bg-success/10 px-3 py-2 text-xs font-semibold text-success">
+                    O sistema também cria uma cópia de segurança automática diária quando houver alterações.
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
-                <Btn onClick={exportarBackup}>
+                <Btn onClick={criarBackupNaNuvem}>
+                  <HardDriveDownload className="h-4 w-4" />
+                  Criar backup agora
+                </Btn>
+                <Btn variant="outline" onClick={exportarBackup}>
                   <Download className="h-4 w-4" />
-                  Exportar backup
+                  Baixar cópia
                 </Btn>
                 <Btn variant="outline" onClick={() => backupInputRef.current?.click()}>
                   <Upload className="h-4 w-4" />
-                  Restaurar backup
+                  Restaurar arquivo
                 </Btn>
                 <input
                   ref={backupInputRef}
