@@ -9,7 +9,7 @@ import {
   useApp, uid, fmtDate,
   type AppState, type Atividade, type AtividadeChecklistItem, type ComentarioAtividade, type PendenciaStatus,
 } from "@/lib/store";
-import { PageHeader, Panel, Stat, Btn, Modal, Field, inputCls, Badge, pageHead } from "@/components/kit";
+import { Avatar, PageHeader, Panel, Stat, Btn, Modal, Field, inputCls, Badge, pageHead } from "@/components/kit";
 
 export const Route = createFileRoute("/atividades")({
   head: pageHead("Atividades", "Atividades da equipe em formato de quadro."),
@@ -220,6 +220,10 @@ function Page() {
     } catch {}
   },[s.funcionarios]);
 
+  const usuarioDoFuncionario = (id:string,nome:string) => {
+    const n=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
+    return s.usuarios.find((u)=>u.vinculoId===id) || s.usuarios.find((u)=>n(u.nome)===n(nome));
+  };
   const func = s.funcionarios.find((x) => x.id === sel) ?? s.funcionarios[0];
   const podeGerirJustificativas = ["Master","Diretoria","Gerente de Marketing","Coordenação"].includes(s.perfil);
 
@@ -378,16 +382,17 @@ function Page() {
             <div className="mb-4 grid gap-3 lg:grid-cols-[300px_1fr]">
         <Panel title="Equipe">
           <div className="space-y-1">
-            {s.funcionarios.map((f) => (
-              <button
+            {s.funcionarios.map((f) => {
+              const u=usuarioDoFuncionario(f.id,f.nome);
+              return <button
                 key={f.id}
                 onClick={() => { setSel(f.id); setActivityId(null); }}
-                className={`w-full rounded-xl px-3 py-2.5 text-left text-sm transition ${sel === f.id ? "bg-primary text-primary-foreground shadow-brand" : "hover:bg-muted"}`}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${sel === f.id ? "bg-primary text-primary-foreground shadow-brand" : "hover:bg-muted"}`}
               >
-                <div className="font-black">{f.nome}</div>
-                <div className={`text-xs ${sel === f.id ? "opacity-80" : "text-muted-foreground"}`}>{f.cargo}</div>
-              </button>
-            ))}
+                <Avatar src={u?.foto} name={f.nome} size="sm" className={sel===f.id?"ring-white/25":""}/>
+                <div className="min-w-0"><div className="truncate font-black">{f.nome}</div><div className={`truncate text-xs ${sel === f.id ? "opacity-80" : "text-muted-foreground"}`}>{f.cargo}</div></div>
+              </button>;
+            })}
           </div>
         </Panel>
 
@@ -408,7 +413,7 @@ function Page() {
         <div className="ml-auto hidden items-center gap-1 text-[11px] text-muted-foreground sm:flex"><ArrowDownUp className="h-3.5 w-3.5"/>até 10 blocos visíveis; o restante rola dentro da coluna</div>
       </div>
 
-      <Panel title={`Atividades · ${func.nome}`} action={<Badge tone="primary">ESTILO TRELLO</Badge>}>
+      <Panel title={`Atividades · ${func.nome}`} action={<div className="flex items-center gap-2"><Avatar src={usuarioDoFuncionario(func.id,func.nome)?.foto} name={func.nome} size="sm"/><Badge tone="primary">ESTILO TRELLO</Badge></div>}>
         <div className="grid gap-4 xl:grid-cols-4">
           {(filtroBloco === "Todos" || filtroBloco === "A fazer") && <div className="rounded-2xl border border-success/20 bg-success/[.025] p-3">
             {(()=>{
