@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Eye, EyeOff, KeyRound, Save, UserRound } from "lucide-react";
-import { useApp } from "@/lib/store";
+import { useRef, useState } from "react";
+import { Download, Eye, EyeOff, HardDriveDownload, KeyRound, Save, Upload, UserRound } from "lucide-react";
+import { useApp, type AppState } from "@/lib/store";
 import { PageHeader, Panel, Btn, Field, inputCls, Badge, pageHead } from "@/components/kit";
 
 export const Route = createFileRoute("/configuracoes")({
@@ -17,8 +17,103 @@ function Page() {
   const [confirmar, setConfirmar] = useState("");
   const [mostrar, setMostrar] = useState(false);
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const [backupMsg, setBackupMsg] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   if (!usuario) return null;
+
+  const exportarBackup = () => {
+    const dados: Partial<AppState> = {
+      despesasFixas: s.despesasFixas,
+      campanhas: s.campanhas,
+      contratos: s.contratos,
+      influencers: s.influencers,
+      usuarios: s.usuarios,
+      metas: s.metas,
+      pendencias: s.pendencias,
+      funcionarios: s.funcionarios,
+      custos: s.custos,
+      reinauguracoes: s.reinauguracoes,
+      rotinasDiarias: s.rotinasDiarias,
+      coresResponsaveis: s.coresResponsaveis,
+      resultadosDiarios: s.resultadosDiarios,
+    };
+
+    const payload = {
+      produto: "BI Lojas IM",
+      tipo: "backup-local",
+      versao: 1,
+      criadoEm: new Date().toISOString(),
+      usuario: usuario.nome,
+      dados,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const agora = new Date();
+    const stamp = [
+      agora.getFullYear(),
+      String(agora.getMonth() + 1).padStart(2, "0"),
+      String(agora.getDate()).padStart(2, "0"),
+      "-",
+      String(agora.getHours()).padStart(2, "0"),
+      String(agora.getMinutes()).padStart(2, "0"),
+    ].join("");
+    a.href = url;
+    a.download = `backup-bi-lojas-im-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setBackupMsg({ tipo: "ok", texto: "Backup exportado. Guarde esse arquivo em um local seguro." });
+  };
+
+  const restaurarBackup = async (file?: File) => {
+    if (!file) return;
+    try {
+      const texto = await file.text();
+      const payload = JSON.parse(texto) as {
+        produto?: string;
+        tipo?: string;
+        versao?: number;
+        dados?: Partial<AppState>;
+      };
+
+      if (payload.produto !== "BI Lojas IM" || !payload.dados || typeof payload.dados !== "object") {
+        throw new Error("Arquivo de backup inválido.");
+      }
+
+      if (!confirm("Restaurar este backup neste computador? Os dados locais atuais serão substituídos pelos dados do arquivo.")) {
+        if (backupInputRef.current) backupInputRef.current.value = "";
+        return;
+      }
+
+      const dados = payload.dados;
+      set((st) => ({
+        ...st,
+        ...(Array.isArray(dados.despesasFixas) ? { despesasFixas: dados.despesasFixas } : {}),
+        ...(Array.isArray(dados.campanhas) ? { campanhas: dados.campanhas } : {}),
+        ...(Array.isArray(dados.contratos) ? { contratos: dados.contratos } : {}),
+        ...(Array.isArray(dados.influencers) ? { influencers: dados.influencers } : {}),
+        ...(Array.isArray(dados.usuarios) ? { usuarios: dados.usuarios } : {}),
+        ...(Array.isArray(dados.metas) ? { metas: dados.metas } : {}),
+        ...(Array.isArray(dados.pendencias) ? { pendencias: dados.pendencias } : {}),
+        ...(Array.isArray(dados.funcionarios) ? { funcionarios: dados.funcionarios } : {}),
+        ...(Array.isArray(dados.custos) ? { custos: dados.custos } : {}),
+        ...(Array.isArray(dados.reinauguracoes) ? { reinauguracoes: dados.reinauguracoes } : {}),
+        ...(Array.isArray(dados.rotinasDiarias) ? { rotinasDiarias: dados.rotinasDiarias } : {}),
+        ...(Array.isArray(dados.resultadosDiarios) ? { resultadosDiarios: dados.resultadosDiarios } : {}),
+        ...(dados.coresResponsaveis && typeof dados.coresResponsaveis === "object" ? { coresResponsaveis: dados.coresResponsaveis } : {}),
+      }));
+
+      setBackupMsg({ tipo: "ok", texto: "Backup restaurado com sucesso neste computador." });
+    } catch (error) {
+      setBackupMsg({ tipo: "erro", texto: error instanceof Error ? error.message : "Não foi possível restaurar o backup." });
+    } finally {
+      if (backupInputRef.current) backupInputRef.current.value = "";
+    }
+  };
 
   const salvarSenha = () => {
     const senhaAtual = usuario.senha || "123456";
@@ -91,6 +186,57 @@ function Page() {
           </div>
         </Panel>
       </div>
+
+      {usuario.perfil === "Master" && (
+        <div className="mt-4">
+          <Panel
+            title="Backup deste computador"
+            action={<Badge tone="primary">Somente Master</Badge>}
+          >
+            <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div className="flex min-w-0 items-start gap-4">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+                  <HardDriveDownload className="h-6 w-6" />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-display text-lg font-black">Cópia de segurança local</div>
+                  <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                    Exporte uma cópia dos dados salvos neste navegador antes de trocar de computador, limpar o navegador ou fazer mudanças grandes no sistema.
+                    O arquivo pode ser restaurado depois em outro computador.
+                  </p>
+                  <div className="mt-3 text-xs font-semibold text-muted-foreground">
+                    Inclui campanhas, atividades, usuários, influencers, reinaugurações, custos, metas e resultados importados.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+                <Btn onClick={exportarBackup}>
+                  <Download className="h-4 w-4" />
+                  Exportar backup
+                </Btn>
+                <Btn variant="outline" onClick={() => backupInputRef.current?.click()}>
+                  <Upload className="h-4 w-4" />
+                  Restaurar backup
+                </Btn>
+                <input
+                  ref={backupInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  className="hidden"
+                  onChange={(e) => restaurarBackup(e.target.files?.[0])}
+                />
+              </div>
+            </div>
+
+            {backupMsg && (
+              <div className={`mt-4 rounded-xl border px-3 py-2.5 text-xs font-semibold ${backupMsg.tipo === "ok" ? "border-success/20 bg-success/10 text-success" : "border-primary/25 bg-primary/10 text-[#ff8a95]"}`}>
+                {backupMsg.texto}
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
     </>
   );
 }
