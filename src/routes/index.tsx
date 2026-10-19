@@ -579,6 +579,8 @@ function Dashboard() {
   const semDados = metaTotal == null && faturamentoTotal == null;
   const temAcumulado = s.resultadosDiarios.some((r)=>r.modo==="acumulado");
   const baseIncompleta = temAcumulado && !rede.baseCompleta && periodo !== "Ano";
+  const gestaoNaoConfigurado = [filiaisGestaoInfo.error, despesasGestaoInfo.error, despesasResumoInfo.error]
+    .some((erro) => /GESTAOIM_|não configurad/i.test(String(erro || "")));
 
   return (
     <>
@@ -591,33 +593,43 @@ function Dashboard() {
         </div>}
       />
 
-      <div className={`mb-4 rounded-2xl border p-3 ${gestaoSync==="ok"?"border-success/20 bg-success/[.035]":gestaoSync==="error"?"border-warn/25 bg-warn/5":"border-white/7 bg-white/[.02]"}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <div><b>GestãoIM</b><span className="ml-2 text-muted-foreground">{gestaoSync==="ok"?"Conectado · resumo mensal automático":gestaoSync==="error"?"Não conectado nesta tentativa":"Verificando integração..."}</span></div>
-          {gestaoAtualizadoEm && <span className="text-xs text-muted-foreground">Última sincronização: {new Date(gestaoAtualizadoEm).toLocaleString("pt-BR")}</span>}
+      {gestaoNaoConfigurado ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/25 p-3">
+          <div className="min-w-0">
+            <div className="text-sm font-black">Dados de resultados</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">O BI está usando os dados já salvos e as importações do GestãoIM/Metabase. A conexão automática com o GestãoIM será reativada quando as credenciais deste ambiente forem vinculadas.</div>
+          </div>
+          <Badge tone="muted">INTEGRAÇÃO PENDENTE</Badge>
         </div>
-        {gestaoSync==="ok" && <p className="mt-1 text-xs text-muted-foreground">Meta e faturamento consolidados do mês usam o GestãoIM. A integração por filial também tenta atualizar automaticamente o ranking e o raio-X de cada loja.</p>}
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/7 pt-2 text-xs">
-          <span className="font-bold">Metas e faturamento por filial:</span>
-          {filiaisGestaoSync==="loading" && <span className="text-muted-foreground">sincronizando...</span>}
-          {filiaisGestaoSync==="ok" && <>
-            <Badge tone={filiaisGestaoInfo.completo ? "success" : "warn"}>{filiaisGestaoInfo.completo ? "30/30 · COMPLETO" : "PARCIAL"}</Badge>
-            <span className="text-muted-foreground">{filiaisGestaoInfo.total}/{filiaisGestaoInfo.esperado || lojas.length} filial(is) atualizada(s)</span>
-            {!!filiaisGestaoInfo.faltantes?.length && <span className="text-warn">Faltando: {filiaisGestaoInfo.faltantes.map((x)=>x.codigo).join(", ")}</span>}
-          </>}
-          {filiaisGestaoSync==="error" && <><Badge tone="warn">ROTA POR FILIAL NÃO LOCALIZADA</Badge><span className="text-muted-foreground">{filiaisGestaoInfo.error || "Ainda sem dados por filial."}</span></>}
+      ) : (
+        <div className={`mb-4 rounded-2xl border p-3 ${gestaoSync==="ok"?"border-success/20 bg-success/[.035]":gestaoSync==="error"?"border-warn/25 bg-warn/5":"border-white/7 bg-white/[.02]"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <div><b>GestãoIM</b><span className="ml-2 text-muted-foreground">{gestaoSync==="ok"?"Conectado · resumo mensal automático":gestaoSync==="error"?"Não conectado nesta tentativa":"Verificando integração..."}</span></div>
+            {gestaoAtualizadoEm && <span className="text-xs text-muted-foreground">Última sincronização: {new Date(gestaoAtualizadoEm).toLocaleString("pt-BR")}</span>}
+          </div>
+          {gestaoSync==="ok" && <p className="mt-1 text-xs text-muted-foreground">Meta e faturamento consolidados do mês usam o GestãoIM. A integração por filial também tenta atualizar automaticamente o ranking e o raio-X de cada loja.</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/7 pt-2 text-xs">
+            <span className="font-bold">Metas e faturamento por filial:</span>
+            {filiaisGestaoSync==="loading" && <span className="text-muted-foreground">sincronizando...</span>}
+            {filiaisGestaoSync==="ok" && <>
+              <Badge tone={filiaisGestaoInfo.completo ? "success" : "warn"}>{filiaisGestaoInfo.completo ? "30/30 · COMPLETO" : "PARCIAL"}</Badge>
+              <span className="text-muted-foreground">{filiaisGestaoInfo.total}/{filiaisGestaoInfo.esperado || lojas.length} filial(is) atualizada(s)</span>
+              {!!filiaisGestaoInfo.faltantes?.length && <span className="text-warn">Faltando: {filiaisGestaoInfo.faltantes.map((x)=>x.codigo).join(", ")}</span>}
+            </>}
+            {filiaisGestaoSync==="error" && <><Badge tone="warn">ROTA POR FILIAL NÃO LOCALIZADA</Badge><span className="text-muted-foreground">{filiaisGestaoInfo.error || "Ainda sem dados por filial."}</span></>}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/7 pt-2 text-xs">
+            <span className="font-bold">Despesas Marketing:</span>
+            {despesasResumoSync==="loading" && <span className="text-muted-foreground">sincronizando resumo...</span>}
+            {despesasResumoSync==="ok" && <><Badge tone="success">AUTOMÁTICO · {despesasResumoRange.rotulo.toUpperCase()}</Badge><span className="text-muted-foreground">{despesasResumoInfo.total} lançamento(s) · {brl(despesasResumoInfo.valorTotal)}</span></>}
+            {despesasResumoSync==="error" && <><Badge tone="warn">RESUMO INDISPONÍVEL</Badge><span className="text-muted-foreground">{despesasResumoInfo.error || "Não foi possível ler o resumo de despesas agora."}</span></>}
+          </div>
+          {filiaisGestaoSync==="ok" && !filiaisGestaoInfo.completo && <div className="mt-2 rounded-xl border border-warn/20 bg-warn/[.045] p-3 text-xs text-muted-foreground">
+            <b className="text-warn">Sincronização parcial da GestãoIM.</b> A Dashboard só usa valores reais recebidos. As filiais ausentes ficam sem Meta/Faturamento até a API da GestãoIM entregá-las. O BI agora continua procurando as lojas faltantes em vez de encerrar a busca ao encontrar apenas parte da rede.
+          </div>}
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-white/7 pt-2 text-xs">
-          <span className="font-bold">Despesas Marketing:</span>
-          {despesasResumoSync==="loading" && <span className="text-muted-foreground">sincronizando resumo...</span>}
-          {despesasResumoSync==="ok" && <><Badge tone="success">AUTOMÁTICO · {despesasResumoRange.rotulo.toUpperCase()}</Badge><span className="text-muted-foreground">{despesasResumoInfo.total} lançamento(s) · {brl(despesasResumoInfo.valorTotal)}</span></>}
-          {despesasResumoSync==="error" && <><Badge tone="warn">RESUMO INDISPONÍVEL</Badge><span className="text-muted-foreground">{despesasResumoInfo.error || "Não foi possível ler o resumo de despesas agora."}</span></>}
-        </div>
-        {filiaisGestaoSync==="ok" && !filiaisGestaoInfo.completo && <div className="mt-2 rounded-xl border border-warn/20 bg-warn/[.045] p-3 text-xs text-muted-foreground">
-          <b className="text-warn">Sincronização parcial da GestãoIM.</b> A Dashboard só usa valores reais recebidos. As filiais ausentes ficam sem Meta/Faturamento até a API da GestãoIM entregá-las. O BI agora continua procurando as lojas faltantes em vez de encerrar a busca ao encontrar apenas parte da rede.
-        </div>}
-      </div>
 
+      )}
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-primary/15 bg-primary/[.035] p-4">
         <div className="min-w-[240px] flex-1">
           <div className="font-display font-black">Importar Metas GestãoIM / Metabase</div>
