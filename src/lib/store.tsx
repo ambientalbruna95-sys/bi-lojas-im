@@ -196,7 +196,7 @@ export type DespesaFixa = {
   ativa: boolean;
   pagamentos: { competencia: string; dataPago: string; valor: number }[];
 };
-export type Usuario = { id: string; nome: string; email: string; perfil: Perfil; ativo: boolean; vinculoId?: string; observacao?: string; senha?: string };
+export type Usuario = { id: string; nome: string; email: string; perfil: Perfil; ativo: boolean; vinculoId?: string; observacao?: string; senha?: string; foto?: string };
 export type SocialPlatform = "Facebook" | "Instagram" | "TikTok" | "LinkedIn" | "YouTube";
 export type SocialConnection = {
   id: string;
@@ -520,7 +520,7 @@ const initial = {
   despesasFixas: [] as DespesaFixa[],
   contratos: contratosIniciais,
   usuarios: [
-    { id: "u-master", nome: "Bruna Marques", email: "", perfil: "Master", ativo: true, observacao: "Acesso completo ao BI", senha: "123456" },
+    { id: "u-master", nome: "Bruna Marques", email: "", perfil: "Master", ativo: true, vinculoId: "e-bruna", observacao: "Acesso completo ao BI", senha: "123456" },
     { id: "u-diretoria", nome: "Diretoria", email: "", perfil: "Diretoria", ativo: true, observacao: "Visão estratégica", senha: "123456" },
     { id: "u-gerente", nome: "Jordan", email: "", perfil: "Gerente de Marketing", ativo: true, vinculoId: "e-jordan", observacao: "Gerente de Marketing", senha: "123456" },
     { id: "u-coord", nome: "Coordenação", email: "", perfil: "Coordenação", ativo: true, observacao: "Perfil de coordenação operacional", senha: "123456" },
