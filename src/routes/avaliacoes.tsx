@@ -89,24 +89,7 @@ function Page() {
         <div><div className="font-display text-lg font-black">{func.nome}</div><div className="text-sm text-muted-foreground">{func.cargo} · {selecionada ? "avaliação registrada" : "avaliação pendente"}</div></div>
       </div>}
 
-      <Panel className="mb-4" title="Equipe">
-        <div className="flex flex-wrap gap-2">
-          {s.funcionarios.map((f)=>{
-            const u=usuarioDoFuncionario(f.id,f.nome);
-            const ativa=f.id===funcId;
-            return <button type="button" key={f.id} onClick={()=>setFuncId(f.id)}
-              className={`flex min-w-[180px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${ativa?"border-primary/30 bg-primary/10":"border-border bg-secondary/25 hover:border-primary/25"}`}>
-              <Avatar src={u?.foto} name={f.nome} size="md"/>
-              <div className="min-w-0"><div className="truncate text-sm font-black">{f.nome}</div><div className="truncate text-xs text-muted-foreground">{f.cargo}</div></div>
-            </button>;
-          })}
-        </div>
-      </Panel>
 
-      {func && <div className="mb-4 flex items-center gap-4 rounded-2xl border border-border bg-secondary/20 p-4">
-        <Avatar src={userFunc?.foto} name={func.nome} size="lg"/>
-        <div><div className="font-display text-lg font-black">{func.nome}</div><div className="text-sm text-muted-foreground">{func.cargo} · {selecionada ? "avaliação registrada" : "avaliação pendente"}</div></div>
-      </div>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Média da equipe" value={mediaEquipe ? mediaEquipe.toFixed(1) : "—"} hint="escala de 1 a 5" />
