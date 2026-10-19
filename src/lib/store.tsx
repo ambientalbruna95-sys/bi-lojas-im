@@ -1007,23 +1007,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const sincronizarEntrada = async () => {
       try {
-        let remote = await pullCloudState();
-        if (cancelled || cloudUserRef.current !== s.usuarioAtivoId) return;
+        let remote;
 
-        // Uma única vez por navegador, incorpora os dados antigos que este
-        // computador possuía antes da centralização. Isso recupera tarefas,
-        // campanhas e demais alterações feitas pela equipe em máquinas diferentes.
-        if (!remote.empty && window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1") {
+        // Primeiro incorpora, uma única vez, o que existia neste computador
+        // antes da nuvem. Isso funciona mesmo se a pessoa tiver trocado a senha
+        // localmente antes da centralização.
+        if (window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1") {
           try {
             const migrated = await mergeLegacyCloudState(sharedStateFromApp(s));
             if (migrated.state) {
               remote = migrated;
+              window.localStorage.setItem(CLOUD_MIGRATION_KEY, "1");
             }
-            window.localStorage.setItem(CLOUD_MIGRATION_KEY, "1");
           } catch (error) {
             console.error("[CloudSync] Falha ao incorporar dados antigos deste computador:", error);
           }
         }
+
+        if (!remote) {
+          remote = await pullCloudState();
+        }
+        if (cancelled || cloudUserRef.current !== s.usuarioAtivoId) return;
 
         if (remote.empty) {
           if (s.perfil !== "Master") {
