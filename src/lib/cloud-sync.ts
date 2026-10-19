@@ -17,15 +17,28 @@ export type CloudDirectoryUser = {
   observacao?: string;
 };
 
+async function timedFetch(body: Record<string, unknown>, timeoutMs: number) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(CLOUD_SYNC_URL, {
+      method: "POST",
+      // text/plain mantém a chamada como "simple request" e evita o preflight
+      // OPTIONS que estava atrasando ou expirando no navegador.
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 async function publicRequest<T extends Record<string, unknown>>(
   action: string,
   payload: Record<string, unknown> = {},
 ): Promise<T & { ok: boolean; error?: string }> {
-  const response = await fetch(CLOUD_SYNC_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, ...payload }),
-  });
+  const response = await timedFetch({ action, ...payload }, 1800);
 
   const data = await response.json().catch(() => ({})) as T & { ok?: boolean; error?: string };
   if (!response.ok || data.ok === false) {
@@ -87,16 +100,12 @@ async function requestCloud<T extends Record<string, unknown>>(
   const auth = getCloudAuth();
   if (!auth) throw new Error("Sessão de sincronização não encontrada. Entre novamente no sistema.");
 
-  const response = await fetch(CLOUD_SYNC_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action,
-      userId: auth.userId,
-      password: auth.password,
-      ...payload,
-    }),
-  });
+  const response = await timedFetch({
+    action,
+    userId: auth.userId,
+    password: auth.password,
+    ...payload,
+  }, action === "pull" ? 3500 : 6000);
 
   const data = await response.json().catch(() => ({})) as T & { ok?: boolean; error?: string };
   if (!response.ok || data.ok === false) {
