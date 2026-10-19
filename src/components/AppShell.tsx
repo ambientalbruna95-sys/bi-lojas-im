@@ -156,15 +156,26 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
       </button>
       <div className="mx-auto grid min-h-[100dvh] max-w-[1540px] overflow-hidden border border-white/10 bg-[#111214] shadow-[0_28px_80px_rgba(0,0,0,.45)] sm:min-h-[calc(100vh-24px)] sm:rounded-[24px] md:min-h-[calc(100vh-40px)] md:rounded-[30px] lg:grid-cols-[1.12fr_.88fr]">
 
-        <section className="relative hidden overflow-hidden bg-[#0d0e10] text-white lg:flex lg:min-h-[calc(100vh-40px)] lg:flex-col lg:justify-between">
+        <section className="relative hidden overflow-hidden bg-[#070809] text-white lg:flex lg:min-h-[calc(100vh-40px)] lg:flex-col lg:justify-between">
+          {/* Base atmosférica: preenche o painel sem esticar demais a imagem principal */}
           <img
             src="/mascote-login.webp"
-            alt="Mascote Lojas IM astronauta na lua"
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-[1.03] object-cover object-center opacity-35 blur-[2px]"
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/20 via-black/15 to-[#111214]/85" />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/35" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(229,22,40,.18),transparent_30%)]" />
+          {/* Imagem principal em uma área com proporção próxima ao arquivo, reduzindo o efeito de baixa resolução */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[66%] overflow-hidden">
+            <img
+              src="/mascote-login.webp"
+              alt="Mascote Lojas IM astronauta na lua"
+              className="h-full w-full object-cover object-center [filter:contrast(1.08)_saturate(1.08)_brightness(1.03)]"
+              style={{ imageRendering: "auto" }}
+            />
+          </div>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-[#111214]/38" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,.08)_0%,rgba(0,0,0,.02)_38%,rgba(5,6,7,.72)_66%,rgba(5,6,7,.98)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(229,22,40,.08),transparent_34%)]" />
 
           <div className="relative z-10 flex items-center justify-between p-8 xl:p-10">
             <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3 pr-5 shadow-2xl backdrop-blur-md">
