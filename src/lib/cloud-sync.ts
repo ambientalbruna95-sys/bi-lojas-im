@@ -120,3 +120,7 @@ export function pushCloudState(state: Record<string, unknown>) {
 export function createCloudBackup() {
   return requestCloud<{ version?: number; createdAt?: string }>("backup");
 }
+
+export function mergeLegacyCloudState(state: Record<string, unknown>) {
+  return requestCloud<CloudPullResponse>("merge-legacy", { state });
+}
