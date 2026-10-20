@@ -921,6 +921,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [s, setS] = useState<AppState>(() => withTaskActivities(normalizeMuzambinhoAssignments(initial)));
   const [resultadosStorageReady, setResultadosStorageReady] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);
+  const hadLegacyOperationalCacheRef = useRef(typeof window !== "undefined" && window.localStorage.getItem(OPERACIONAL_STORAGE_KEY) !== null);
   const cloudVersionRef = useRef(0);
   const cloudUserRef = useRef("");
   const lastCloudPayloadRef = useRef("");
@@ -1012,7 +1013,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Primeiro incorpora, uma única vez, o que existia neste computador
         // antes da nuvem. Isso funciona mesmo se a pessoa tiver trocado a senha
         // localmente antes da centralização.
-        if (window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1" && window.localStorage.getItem(OPERACIONAL_STORAGE_KEY)) {
+        if (window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1" && hadLegacyOperationalCacheRef.current) {
           try {
             const migrated = await mergeLegacyCloudState(sharedStateFromApp(s));
             if (migrated.state) {
