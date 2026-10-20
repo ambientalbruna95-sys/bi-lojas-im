@@ -92,9 +92,7 @@ function Page() {
           <div className="mt-1 text-sm font-medium text-muted-foreground">{func.cargo}</div>
           <div className="mt-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-bold text-muted-foreground">{selecionada ? "Avaliação registrada" : "Avaliação pendente"}</div>
         </div>
-      </div>
-
-
+      </div>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Média da equipe" value={mediaEquipe ? mediaEquipe.toFixed(1) : "—"} hint="escala de 1 a 5" />
