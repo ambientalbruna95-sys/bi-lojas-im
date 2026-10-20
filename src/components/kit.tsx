@@ -26,10 +26,10 @@ export function Panel({ title, children, className = "", action }: { title?: str
 
 export function Avatar({ src, name, size = "md", className = "" }: { src?: string; name: string; size?: "sm" | "md" | "lg" | "xl"; className?: string }) {
   const sizes = {
-    sm: "h-8 w-8 text-[10px]",
-    md: "h-10 w-10 text-xs",
-    lg: "h-14 w-14 text-base",
-    xl: "h-20 w-20 text-xl",
+    sm: "h-10 w-10 text-xs",
+    md: "h-13 w-13 text-sm",
+    lg: "h-[72px] w-[72px] text-lg",
+    xl: "h-28 w-28 text-2xl",
   };
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "?";
   if (src) {
