@@ -379,17 +379,17 @@ function Page() {
         </div>
       </Panel>}
 
-            <div className="mb-4 grid gap-3 lg:grid-cols-[300px_1fr]">
+            <div className="mb-4 grid gap-3 lg:grid-cols-[330px_1fr]">
         <Panel title="Equipe">
-          <div className="space-y-1">
+          <div className="space-y-2">
             {s.funcionarios.map((f) => {
               const u=usuarioDoFuncionario(f.id,f.nome);
               return <button
                 key={f.id}
                 onClick={() => { setSel(f.id); setActivityId(null); }}
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${sel === f.id ? "bg-primary text-primary-foreground shadow-brand" : "hover:bg-muted"}`}
+                className={`flex w-full min-h-[76px] items-center gap-4 rounded-2xl px-3 py-3 text-left text-sm transition ${sel === f.id ? "bg-primary text-primary-foreground shadow-brand" : "hover:bg-muted"}`}
               >
-                <Avatar src={u?.foto} name={f.nome} size="sm" className={sel===f.id?"ring-white/25":""}/>
+                <Avatar src={u?.foto} name={f.nome} size="lg" className={sel===f.id?"ring-2 ring-white/35":"ring-2 ring-white/10"}/>
                 <div className="min-w-0"><div className="truncate font-black">{f.nome}</div><div className={`truncate text-xs ${sel === f.id ? "opacity-80" : "text-muted-foreground"}`}>{f.cargo}</div></div>
               </button>;
             })}
@@ -413,7 +413,7 @@ function Page() {
         <div className="ml-auto hidden items-center gap-1 text-[11px] text-muted-foreground sm:flex"><ArrowDownUp className="h-3.5 w-3.5"/>até 10 blocos visíveis; o restante rola dentro da coluna</div>
       </div>
 
-      <Panel title={`Atividades · ${func.nome}`} action={<div className="flex items-center gap-2"><Avatar src={usuarioDoFuncionario(func.id,func.nome)?.foto} name={func.nome} size="sm"/><Badge tone="primary">ESTILO TRELLO</Badge></div>}>
+      <Panel title={`Atividades · ${func.nome}`} action={<div className="flex items-center gap-2"><Avatar src={usuarioDoFuncionario(func.id,func.nome)?.foto} name={func.nome} size="md"/><Badge tone="primary">ESTILO TRELLO</Badge></div>}>
         <div className="grid gap-4 xl:grid-cols-4">
           {(filtroBloco === "Todos" || filtroBloco === "A fazer") && <div className="rounded-2xl border border-success/20 bg-success/[.025] p-3">
             {(()=>{
