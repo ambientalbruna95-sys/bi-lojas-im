@@ -84,15 +84,21 @@ function Page() {
         </div>
       </Panel>
 
-      {func && <div className="mb-4 flex flex-col items-start gap-5 rounded-2xl border border-border bg-secondary/20 p-5 sm:flex-row sm:items-center sm:p-6">
-        <Avatar src={userFunc?.foto} name={func.nome} size="xl" className="ring-2 ring-primary/25"/>
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 text-[11px] font-black uppercase tracking-[.16em] text-muted-foreground">Ficha do colaborador</div>
-          <div className="font-display text-2xl font-black tracking-tight sm:text-3xl">{func.nome}</div>
-          <div className="mt-1 text-sm font-medium text-muted-foreground">{func.cargo}</div>
-          <div className="mt-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-bold text-muted-foreground">{selecionada ? "Avaliação registrada" : "Avaliação pendente"}</div>
+      {func && <section className="mb-5 overflow-hidden rounded-3xl border border-border bg-gradient-to-r from-secondary/40 via-secondary/20 to-primary/[.035]">
+        <div className="h-1 w-full bg-gradient-to-r from-primary via-primary/40 to-transparent" />
+        <div className="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:p-7">
+          <Avatar src={userFunc?.foto} name={func.nome} size="xl" className="!h-36 !w-36 sm:!h-44 sm:!w-44 ring-4 ring-primary/25 shadow-xl" />
+          <div className="min-w-0 flex-1">
+            <p className="mb-2 text-[11px] font-black uppercase tracking-[.18em] text-primary">Ficha do colaborador</p>
+            <h2 className="font-display text-3xl font-black tracking-tight sm:text-4xl">{func.nome}</h2>
+            <p className="mt-2 text-base font-semibold text-muted-foreground">{func.cargo}</p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Badge tone={selecionada ? "success" : "warn"}>{selecionada ? "Avaliação registrada" : "Avaliação pendente"}</Badge>
+              <span className="text-xs text-muted-foreground">Referência: {mes.split("-").reverse().join("/")}</span>
+            </div>
+          </div>
         </div>
-      </div>}
+      </section>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Média da equipe" value={mediaEquipe ? mediaEquipe.toFixed(1) : "—"} hint="escala de 1 a 5" />
