@@ -40,7 +40,7 @@ function Page() {
               const u=usuarioDo(f.id,f.nome);
               return <button key={f.id} onClick={() => setSel(f.id)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${sel === f.id ? "bg-primary text-primary-foreground shadow-brand" : "hover:bg-muted"}`}>
-                <Avatar src={u?.foto} name={f.nome} size="sm" className={sel===f.id?"ring-white/25":""}/>
+                <Avatar src={u?.foto} name={f.nome} size="lg" className={sel===f.id?"ring-white/25":""}/>
                 <div className="min-w-0"><div className="truncate font-black">{f.nome}</div><div className={`truncate text-xs ${sel === f.id ? "opacity-80" : "text-muted-foreground"}`}>{f.cargo}</div></div>
               </button>;
             })}
