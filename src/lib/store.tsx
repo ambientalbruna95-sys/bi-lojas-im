@@ -1012,7 +1012,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Primeiro incorpora, uma única vez, o que existia neste computador
         // antes da nuvem. Isso funciona mesmo se a pessoa tiver trocado a senha
         // localmente antes da centralização.
-        if (window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1") {
+        if (window.localStorage.getItem(CLOUD_MIGRATION_KEY) !== "1" && window.localStorage.getItem(OPERACIONAL_STORAGE_KEY)) {
           try {
             const migrated = await mergeLegacyCloudState(sharedStateFromApp(s));
             if (migrated.state) {
