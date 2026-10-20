@@ -435,7 +435,7 @@ function extrair(payload:unknown, competencia:string, dataBase:string):Row[] {
     if (!match) continue;
 
     const meta=firstNumber(obj,[
-      "meta","meta_mes","meta_mensal","meta_vendas","meta_faturamento","target","goal","valor_meta","vl_meta","meta_total",
+      "meta","meta_mes","meta_mensal","meta_vendas","meta_faturamento","target","goal","total_goal","valor_meta","vl_meta","meta_total",
     ]);
     const faturamento=firstNumber(obj,[
       "faturamento","faturamento_mes","faturado","realizado","vendido","vendido_mes","vendas","vendas_mes",
