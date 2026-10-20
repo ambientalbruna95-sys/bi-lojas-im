@@ -76,18 +76,23 @@ function Page() {
             const u=usuarioDoFuncionario(f.id,f.nome);
             const ativa=f.id===funcId;
             return <button type="button" key={f.id} onClick={()=>setFuncId(f.id)}
-              className={`flex min-w-[180px] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${ativa?"border-primary/30 bg-primary/10":"border-border bg-secondary/25 hover:border-primary/25"}`}>
-              <Avatar src={u?.foto} name={f.nome} size="md"/>
+              className={`flex min-w-[220px] items-center gap-3 rounded-xl border px-3 py-3 text-left transition ${ativa?"border-primary/30 bg-primary/10":"border-border bg-secondary/25 hover:border-primary/25"}`}>
+              <Avatar src={u?.foto} name={f.nome} size="lg"/>
               <div className="min-w-0"><div className="truncate text-sm font-black">{f.nome}</div><div className="truncate text-xs text-muted-foreground">{f.cargo}</div></div>
             </button>;
           })}
         </div>
       </Panel>
 
-      {func && <div className="mb-4 flex items-center gap-4 rounded-2xl border border-border bg-secondary/20 p-4">
-        <Avatar src={userFunc?.foto} name={func.nome} size="lg"/>
-        <div><div className="font-display text-lg font-black">{func.nome}</div><div className="text-sm text-muted-foreground">{func.cargo} · {selecionada ? "avaliação registrada" : "avaliação pendente"}</div></div>
-      </div>}
+      {func && <div className="mb-4 flex flex-col items-start gap-5 rounded-2xl border border-border bg-secondary/20 p-5 sm:flex-row sm:items-center sm:p-6">
+        <Avatar src={userFunc?.foto} name={func.nome} size="xl" className="ring-2 ring-primary/25"/>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 text-[11px] font-black uppercase tracking-[.16em] text-muted-foreground">Ficha do colaborador</div>
+          <div className="font-display text-2xl font-black tracking-tight sm:text-3xl">{func.nome}</div>
+          <div className="mt-1 text-sm font-medium text-muted-foreground">{func.cargo}</div>
+          <div className="mt-3 inline-flex rounded-full border border-border px-3 py-1 text-xs font-bold text-muted-foreground">{selecionada ? "Avaliação registrada" : "Avaliação pendente"}</div>
+        </div>
+      </div>
 
 
 
