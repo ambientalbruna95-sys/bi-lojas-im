@@ -1,6 +1,7 @@
 export type GoogleAdsConfig = {
   clientId: string;
   clientSecret: string;
+  developerToken: string;
   apiVersion: string;
   redirectUri?: string;
 };
@@ -8,10 +9,11 @@ export type GoogleAdsConfig = {
 export function getGoogleAdsConfig(): GoogleAdsConfig | null {
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET?.trim();
+  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim() || "";
   const apiVersion = process.env.GOOGLE_ADS_API_VERSION?.trim() || "v25";
   const redirectUri = process.env.GOOGLE_ADS_REDIRECT_URI?.trim();
   if (!clientId || !clientSecret) return null;
-  return { clientId, clientSecret, apiVersion, redirectUri };
+  return { clientId, clientSecret, developerToken, apiVersion, redirectUri };
 }
 
 export function googleCookie(name: string, value: string, maxAge: number) {
