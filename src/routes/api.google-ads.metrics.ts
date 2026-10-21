@@ -14,6 +14,7 @@ type AdsRow = {
   currency: string;
   campaignId: string;
   campaignName: string;
+  campaignStatus: string;
   channelType: string;
   cost: number;
   impressions: number;
@@ -163,6 +164,7 @@ async function campaignMetrics(
       currency: String(r?.customer?.currencyCode || r?.customer?.currency_code || "BRL"),
       campaignId,
       campaignName: String(r?.campaign?.name || "Campanha sem nome"),
+      campaignStatus: String(r?.campaign?.status || 'UNKNOWN'),
       channelType: String(r?.campaign?.advertisingChannelType || r?.campaign?.advertising_channel_type || "Google Ads"),
       ...metrics,
     };
