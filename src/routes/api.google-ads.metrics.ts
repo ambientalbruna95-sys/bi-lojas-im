@@ -22,6 +22,37 @@ type AdsRow = {
   conversionValue: number;
 };
 
+type VideoRow = {
+  customerId: string; campaignId: string; campaignName: string; bracket: string;
+  adId: string; adName: string; impressions: number; trueView: number; cost: number; cpm: number;
+};
+
+async function videoAdMetrics(accessToken: string, apiVersion: string, customerId: string, start: string, end: string, loginCustomerId?: string): Promise<VideoRow[]> {
+  const query = `
+    SELECT campaign.id, campaign.name, ad_group_ad.ad.id, ad_group_ad.ad.name,
+      metrics.impressions, metrics.video_views, metrics.cost_micros
+    FROM ad_group_ad
+    WHERE segments.date BETWEEN '${start}' AND '${end}'
+      AND ad_group_ad.ad.type = 'VIDEO_AD'
+  `;
+  const results = await adsSearch(accessToken, apiVersion, customerId, query, loginCustomerId);
+  const videos = new Map<string, VideoRow>();
+  for (const row of results) {
+    const campaignId = String(row?.campaign?.id || "");
+    const campaignName = String(row?.campaign?.name || "");
+    const adId = String(row?.adGroupAd?.ad?.id || row?.ad_group_ad?.ad?.id || "");
+    if (!campaignId || !adId) continue;
+    const key = `${campaignId}:${adId}`;
+    const value = videos.get(key) || { customerId, campaignId, campaignName, bracket: campaignName.match(/\[[^\]]+\]/)?.[0] || "", adId, adName: String(row?.adGroupAd?.ad?.name || row?.ad_group_ad?.ad?.name || `Vídeo ${adId}`), impressions: 0, trueView: 0, cost: 0, cpm: 0 };
+    value.impressions += Number(row?.metrics?.impressions || 0);
+    value.trueView += Number(row?.metrics?.videoViews ?? row?.metrics?.video_views ?? 0);
+    value.cost += Number(row?.metrics?.costMicros ?? row?.metrics?.cost_micros ?? 0) / 1000000;
+    value.cpm = value.impressions ? value.cost / value.impressions * 1000 : 0;
+    videos.set(key, value);
+  }
+  return [...videos.values()];
+}
+
 type GoogleError = {
   account?: string;
   message: string;
@@ -202,6 +233,7 @@ export const Route = createFileRoute("/api/google-ads/metrics")({
 
           const accessible = await listAccessibleGoogleAdsCustomers(accessToken, config.apiVersion);
           const rows: AdsRow[] = [];
+          const videos: VideoRow[] = [];
           const errors: GoogleError[] = [];
           const queried = new Set<string>();
 
@@ -218,6 +250,7 @@ export const Route = createFileRoute("/api/google-ads/metrics")({
                 range.end,
               );
               rows.push(...directRows);
+              try { videos.push(...await videoAdMetrics(accessToken, config.apiVersion, customerId, range.start, range.end)); } catch (e) { errors.push({ account: customerId, message: `Detalhamento de vídeos indisponível: ${explainGoogleAdsError(String(e))}` }); }
               queried.add(customerId);
               continue;
             } catch (error) {
@@ -252,6 +285,7 @@ export const Route = createFileRoute("/api/google-ads/metrics")({
                     range.end,
                     customerId,
                   ));
+                  try { videos.push(...await videoAdMetrics(accessToken, config.apiVersion, child.id, range.start, range.end, customerId)); } catch (e) { errors.push({ account: child.id, message: `Detalhamento de vídeos indisponível: ${explainGoogleAdsError(String(e))}` }); }
                 } catch (error) {
                   errors.push({
                     account: child.id,
@@ -313,6 +347,7 @@ export const Route = createFileRoute("/api/google-ads/metrics")({
             apiVersion: config.apiVersion,
             accounts: accessible,
             rows: finalRows,
+            videos,
             totals,
             conversionTrackingDetected: totals.conversions > 0 || totals.conversionValue > 0,
             errors,
