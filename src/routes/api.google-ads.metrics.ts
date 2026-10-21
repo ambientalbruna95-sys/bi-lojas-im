@@ -50,6 +50,7 @@ async function adsSearch(
 ) {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
+    "developer-token": process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim() || "",
     "Content-Type": "application/json",
   };
   if (loginCustomerId && loginCustomerId !== customerId) {
@@ -172,6 +173,13 @@ export const Route = createFileRoute("/api/google-ads/metrics")({
         if (!config) {
           return Response.json(
             { ok: false, configured: false, connected: false, rows: [], errors: [`Credenciais OAuth do Google Ads não configuradas. Variável ausente: ${["GOOGLE_ADS_CLIENT_ID","GOOGLE_ADS_CLIENT_SECRET"].filter((k) => !process.env[k]?.trim()).join(", ")}`] },
+            { status: 503 },
+          );
+        }
+
+        if (!config.developerToken) {
+          return Response.json(
+            { ok: false, configured: false, connected: false, rows: [], errors: [{ message: "Falta configurar GOOGLE_ADS_DEVELOPER_TOKEN na hospedagem. A API do Google Ads exige esse token além do OAuth. Obtenha-o em Google Ads > Administrador > Central de API (conta de administrador) e configure a variável de ambiente na Vercel." }] },
             { status: 503 },
           );
         }
