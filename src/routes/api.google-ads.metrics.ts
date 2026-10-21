@@ -90,39 +90,51 @@ async function campaignMetrics(
   end: string,
   loginCustomerId?: string,
 ): Promise<AdsRow[]> {
-  const query = `
-    SELECT
-      customer.id,
-      customer.descriptive_name,
-      customer.currency_code,
-      campaign.id,
-      campaign.name,
-      campaign.advertising_channel_type,
-      metrics.cost_micros,
-      metrics.impressions,
-      metrics.clicks,
-      metrics.conversions,
-      metrics.conversions_value
+  // Consultar o cadastro das campanhas separadamente das métricas é importante:
+  // campanhas ativas com zero movimentação no mês também precisam aparecer no BI.
+  const campaignsQuery = `
+    SELECT customer.id, customer.descriptive_name, customer.currency_code,
+      campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type
+    FROM campaign
+    WHERE campaign.status != 'REMOVED'
+  `;
+  const metricsQuery = `
+    SELECT campaign.id, metrics.cost_micros, metrics.impressions, metrics.clicks,
+      metrics.conversions, metrics.conversions_value
     FROM campaign
     WHERE segments.date BETWEEN '${start}' AND '${end}'
       AND campaign.status != 'REMOVED'
-    ORDER BY metrics.cost_micros DESC
   `;
 
-  const results = await adsSearch(accessToken, apiVersion, customerId, query, loginCustomerId);
-  return results.map((r: any) => ({
-    customerId: cleanCustomerId(r?.customer?.id || customerId),
-    customerName: String(r?.customer?.descriptiveName || r?.customer?.descriptive_name || ""),
-    currency: String(r?.customer?.currencyCode || r?.customer?.currency_code || "BRL"),
-    campaignId: String(r?.campaign?.id || ""),
-    campaignName: String(r?.campaign?.name || "Campanha sem nome"),
-    channelType: String(r?.campaign?.advertisingChannelType || r?.campaign?.advertising_channel_type || "Google Ads"),
-    cost: Number(r?.metrics?.costMicros ?? r?.metrics?.cost_micros ?? 0) / 1_000_000,
-    impressions: Number(r?.metrics?.impressions || 0),
-    clicks: Number(r?.metrics?.clicks || 0),
-    conversions: Number(r?.metrics?.conversions || 0),
-    conversionValue: Number(r?.metrics?.conversionsValue ?? r?.metrics?.conversions_value ?? 0),
-  })).filter((row) => row.cost || row.impressions || row.clicks || row.conversions || row.conversionValue);
+  const campaignResults = await adsSearch(accessToken, apiVersion, customerId, campaignsQuery, loginCustomerId);
+  const metricsResults = await adsSearch(accessToken, apiVersion, customerId, metricsQuery, loginCustomerId);
+  const metricsByCampaign = new Map<string, { cost: number; impressions: number; clicks: number; conversions: number; conversionValue: number }>();
+  for (const result of metricsResults) {
+    const id = String(result?.campaign?.id || "");
+    if (!id) continue;
+    const m = result?.metrics || {};
+    const previous = metricsByCampaign.get(id) || { cost: 0, impressions: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+    metricsByCampaign.set(id, {
+      cost: previous.cost + Number(m.costMicros ?? m.cost_micros ?? 0) / 1000000,
+      impressions: previous.impressions + Number(m.impressions || 0),
+      clicks: previous.clicks + Number(m.clicks || 0),
+      conversions: previous.conversions + Number(m.conversions || 0),
+      conversionValue: previous.conversionValue + Number(m.conversionsValue ?? m.conversions_value ?? 0),
+    });
+  }
+  return campaignResults.map((r: any) => {
+    const campaignId = String(r?.campaign?.id || "");
+    const metrics = metricsByCampaign.get(campaignId) || { cost: 0, impressions: 0, clicks: 0, conversions: 0, conversionValue: 0 };
+    return {
+      customerId: cleanCustomerId(r?.customer?.id || customerId),
+      customerName: String(r?.customer?.descriptiveName || r?.customer?.descriptive_name || ""),
+      currency: String(r?.customer?.currencyCode || r?.customer?.currency_code || "BRL"),
+      campaignId,
+      campaignName: String(r?.campaign?.name || "Campanha sem nome"),
+      channelType: String(r?.campaign?.advertisingChannelType || r?.campaign?.advertising_channel_type || "Google Ads"),
+      ...metrics,
+    };
+  }).filter((row) => row.campaignId);
 }
 
 async function childCustomers(
