@@ -65,6 +65,7 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
   const [userId, setUserId] = useState(ativos[0]?.id ?? "");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
+  const [listaUsuariosAberta, setListaUsuariosAberta] = useState(false);
   const [erro, setErro] = useState("");
   const [entrando, setEntrando] = useState(false);
 
@@ -225,12 +226,22 @@ function LoginScreen({theme,setTheme}:{theme:"dark"|"light";setTheme:(v:"dark"|"
             </div>
 
             <div className="space-y-4 sm:space-y-5">
-              <label className="block">
-                <span className="mb-2 block text-sm font-bold text-white">Quem está entrando?</span>
-                <select className="h-14 w-full rounded-2xl border border-white/10 bg-[#242428] px-4 text-sm font-semibold text-white shadow-inner outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10" value={userId} onChange={(e) => setUserId(e.target.value)} style={{colorScheme:"dark"}}>
-                  {ativos.map((u) => <option key={u.id} value={u.id} className="bg-[#242428] text-white">{u.nome} — {u.perfil}</option>)}
-                </select>
-              </label>
+              <div className="relative">
+                <label className="mb-2 block text-sm font-bold text-white" id="login-usuario-label">Quem está entrando?</label>
+                <button type="button" aria-labelledby="login-usuario-label" aria-expanded={listaUsuariosAberta} aria-controls="login-usuarios-lista" onClick={() => setListaUsuariosAberta((aberta) => !aberta)}
+                  className="flex h-14 w-full items-center justify-between rounded-2xl border border-white/15 bg-[#303238] px-4 text-left text-sm font-semibold text-[#f8fafc] shadow-inner outline-none transition hover:border-white/30 focus:border-primary focus:ring-4 focus:ring-primary/10">
+                  <span className="truncate">{ativos.find((u) => u.id === userId)?.nome || "Selecione um usuário"} — {ativos.find((u) => u.id === userId)?.perfil || ""}</span>
+                  <ChevronDown className={`ml-3 h-4 w-4 shrink-0 text-white/80 transition-transform ${listaUsuariosAberta ? "rotate-180" : ""}`} />
+                </button>
+                {listaUsuariosAberta && <div id="login-usuarios-lista" role="listbox" aria-labelledby="login-usuario-label"
+                  className="absolute inset-x-0 top-full z-[100] mt-2 max-h-72 overflow-y-auto rounded-xl border border-[#646977] bg-[#303238] p-1.5 shadow-2xl">
+                  {ativos.map((u) => <button key={u.id} type="button" role="option" aria-selected={u.id === userId}
+                    onClick={() => { setUserId(u.id); setListaUsuariosAberta(false); }}
+                    className={`block w-full rounded-lg px-3 py-3 text-left text-sm font-semibold transition-colors ${u.id === userId ? "bg-[#566174] text-white" : "text-[#f8fafc] hover:bg-[#454a55]"}`}>
+                    {u.nome} — {u.perfil}
+                  </button>)}
+                </div>}
+              </div>
 
               <label className="block">
                 <div className="mb-2 flex items-center justify-between">
