@@ -143,6 +143,7 @@ export type Campanha = {
   aprovacao: AprovacaoCampanha;
   aprovadoPor?: string;
   aprovadoEm?: string;
+  observacaoAprovacao?: string;
   inicio: string;
   fim: string;
   verba: number;
