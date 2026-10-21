@@ -568,3 +568,9 @@ button, a, select, input, textarea { -webkit-tap-highlight-color: transparent; }
 .dark header [class~="bg-white"] * {
   color: #17181b;
 }
+
+
+/* Contraste acessível para listas nativas de seleção, inclusive no tema escuro. */
+select { color-scheme: dark; }
+select option, select optgroup { background-color: #202126; color: #f8fafc; }
+select option:checked { background-color: #2563eb; color: #ffffff; }
