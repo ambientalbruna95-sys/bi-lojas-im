@@ -90,6 +90,7 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TrafegoTab>("geral");
   const [busca, setBusca] = useState("");
+  const [secao, setSecao] = useState<"resumo" | "campanhas" | "videos" | "evolucao">("resumo");
   const [periodoHistorico, setPeriodoHistorico] = useState<6 | 12>(6);
   const [metricaHistorico, setMetricaHistorico] = useState<"investimento" | "impressoes" | "cliques" | "resultados">("investimento");
   const [googleRows, setGoogleRows] = useState<GoogleAdsMetricRow[]>([]);
@@ -345,6 +346,16 @@ function Page() {
         </div>}
       </>}
 
+      <div className="sticky top-2 z-20 mb-4 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-[#191b20]/95 p-2 shadow-lg backdrop-blur">
+        {([
+          ["resumo", "Resumo"], ["campanhas", "Campanhas"], ["videos", "Vídeos"], ["evolucao", "Evolução"]
+        ] as const).filter(([id]) => id !== "videos" || tab === "google").map(([id, titulo]) =>
+          <button key={id} type="button" onClick={() => setSecao(id)}
+            className={`rounded-lg px-4 py-2.5 text-sm font-bold transition ${secao===id ? "bg-primary text-white" : "bg-white/5 text-white/80 hover:bg-white/10"}`}>{titulo}</button>
+        )}
+      </div>
+
+      {secao === "resumo" && <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat accent label="Investimento" value={brl(investimento)} hint={tab==="google" ? "Google Ads" : tab==="meta" ? "Meta Business" : "todas as fontes"} />
         <Stat label="Impressões" value={num(impressoes)} hint={alcance ? `${num(alcance)} de alcance` : "alcance não informado"} />
@@ -371,6 +382,8 @@ function Page() {
         </Panel>
       </div>
 
+      </>}
+      {secao === "campanhas" && <>
       {tab === "google" && <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[.02] p-3">
         <span className="text-sm font-bold">Status das campanhas:</span>
         <select className={inputCls} aria-label="Filtrar status das campanhas do Google Ads" value={statusGoogle} onChange={(e)=>setStatusGoogle(e.target.value)}>
@@ -381,7 +394,7 @@ function Page() {
         <span className="text-xs text-muted-foreground">Ativa significa habilitada no Google Ads; entrega de anúncios depende também de orçamento, aprovação e elegibilidade.</span>
       </div>}
       <Panel title={tab==="geral" ? "Campanhas do relatório mensal" : tab==="google" ? "Campanhas · Google Ads" : "Campanhas · Meta Business"} className="mt-4">
-        <div className="overflow-x-auto">
+        <div className="max-h-[60vh] overflow-auto">
           <table className="w-full min-w-[1050px] text-sm">
             <thead><tr className="border-b text-left text-xs uppercase text-muted-foreground"><th className="pb-2">Plataforma</th><th>Campanha</th><th>Objetivo</th><th>Filial</th><th>Investimento</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Resultados</th><th>Custo/result.</th></tr></thead>
             <tbody>{dadosDaAba.filter((x)=>tab !== "google" || !x.id.startsWith("google-") || statusGoogle === "Todos" || googleRows.some((row)=>`google-${row.customerId}-${row.campaignId}`===x.id && row.campaignStatus===statusGoogle)).map((x) => {
@@ -397,7 +410,8 @@ function Page() {
         </div>
       </Panel>
 
-      {tab === "google" && <Panel title="Vídeos por campanha · Google Ads" className="mt-4">
+      </>}
+      {secao === "videos" && tab === "google" && <Panel title="Vídeos por campanha · Google Ads" className="mt-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">TrueView, impressões e CPM por anúncio em vídeo. Filtre pelo identificador entre colchetes no nome da campanha.</p>
           <select className={inputCls} aria-label="Campanha entre colchetes" value={grupoVideo} onChange={(e)=>setGrupoVideo(e.target.value)}>
@@ -405,7 +419,7 @@ function Page() {
             {gruposVideos.map((grupo)=><option value={grupo} key={grupo}>{grupo}</option>)}
           </select>
         </div>
-        <div className="overflow-x-auto">
+        <div className="max-h-[60vh] overflow-auto">
           <table className="w-full min-w-[800px] text-sm">
             <thead><tr className="border-b text-left text-xs uppercase text-muted-foreground"><th className="pb-2">Campanha [ ]</th><th>Vídeo / anúncio</th><th>Visualizações TrueView</th><th>Impressões</th><th>CPM médio</th><th>Investimento</th></tr></thead>
             <tbody>{videosVisiveis.map((v)=><tr key={v.customerId+":"+v.campaignId+":"+v.adId} className="border-b last:border-0">
@@ -418,7 +432,7 @@ function Page() {
         {!!googleInfo.errors?.some((e)=>e.message.includes("Detalhamento de vídeos")) && <p className="mt-3 text-xs text-warn">O detalhamento de vídeos teve uma falha na API. Confira o aviso de sincronização acima; os totais de campanhas permanecem independentes.</p>}
       </Panel>}
 
-      {tab !== "geral" && <Panel title="Origem dos dados" className="mt-4">
+      {secao === "resumo" && tab !== "geral" && <Panel title="Origem dos dados" className="mt-4">
         <div className="grid gap-3 md:grid-cols-3 text-sm">
           <div className="rounded-xl border border-white/8 p-3"><div className="text-xs font-black uppercase tracking-[.1em] text-muted-foreground">Fonte</div><div className="mt-1 font-bold">{tab==="google" ? "Google Ads API" : "Meta Marketing API"}</div></div>
           <div className="rounded-xl border border-white/8 p-3"><div className="text-xs font-black uppercase tracking-[.1em] text-muted-foreground">Resultado</div><div className="mt-1 text-sm text-muted-foreground">{tab==="google" ? "Conversões configuradas na conta do Google Ads." : "Ação principal rastreável da campanha: compra, lead, conversa, cadastro ou contato."}</div></div>
@@ -426,7 +440,7 @@ function Page() {
         </div>
       </Panel>}
 
-      <Panel title="Evolução mensal" className="mt-4">
+      {secao === "evolucao" && <Panel title="Evolução mensal" className="mt-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-2xl text-xs text-muted-foreground">Histórico dos registros mensais armazenados no BI, filtrado pela plataforma selecionada. Meses sem registros não são considerados zero.</p>
           <div className="flex flex-wrap gap-2">
@@ -444,7 +458,7 @@ function Page() {
           <div className="h-72"><ResponsiveContainer><AreaChart data={historico}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} /><Tooltip formatter={(valor) => [metricaHistorico === "investimento" ? brl(Number(valor)) : Number(valor).toLocaleString("pt-BR"), metricaNomeHistorico]} /><Area connectNulls={false} type="monotone" dataKey={metricaHistorico} name={metricaNomeHistorico} stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
         )}
         <p className="mt-3 text-xs text-muted-foreground">{mesesComHistorico} de {periodoHistorico} meses com registros. Para comparar dados históricos da Google Ads API e Meta Ads, será necessário consultar e armazenar cada competência separadamente.</p>
-      </Panel>
+      </Panel>}
 
       <TrafegoModal open={open} onClose={() => setOpen(false)} mes={mes} />
     </>
