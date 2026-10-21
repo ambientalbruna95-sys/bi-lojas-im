@@ -26,11 +26,14 @@ type GoogleAdsMetricRow = {
   conversionValue: number;
 };
 
+type GoogleVideoRow = { customerId: string; campaignId: string; campaignName: string; bracket: string; adId: string; adName: string; impressions: number; trueView: number; cost: number; cpm: number };
+
 type GoogleAdsMetricsResponse = {
   ok?: boolean;
   connected?: boolean;
   configured?: boolean;
   rows?: GoogleAdsMetricRow[];
+  videos?: GoogleVideoRow[];
   totals?: {
     cost: number;
     impressions: number;
@@ -89,6 +92,8 @@ function Page() {
   const [periodoHistorico, setPeriodoHistorico] = useState<6 | 12>(6);
   const [metricaHistorico, setMetricaHistorico] = useState<"investimento" | "impressoes" | "cliques" | "resultados">("investimento");
   const [googleRows, setGoogleRows] = useState<GoogleAdsMetricRow[]>([]);
+  const [googleVideos, setGoogleVideos] = useState<GoogleVideoRow[]>([]);
+  const [grupoVideo, setGrupoVideo] = useState("Todos");
   const [googleSync, setGoogleSync] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [googleInfo, setGoogleInfo] = useState<GoogleAdsMetricsResponse>({});
   const [metaRows, setMetaRows] = useState<MetaAdsMetricRow[]>([]);
@@ -102,16 +107,19 @@ function Page() {
       const data = await res.json() as GoogleAdsMetricsResponse;
       if (!res.ok || !data.ok) {
         setGoogleRows([]);
+        setGoogleVideos([]);
         setGoogleInfo(data);
         setGoogleSync("error");
         if (!silent) console.warn("Google Ads metrics:", data.errors);
         return;
       }
       setGoogleRows(data.rows || []);
+      setGoogleVideos(data.videos || []);
       setGoogleInfo(data);
       setGoogleSync("ok");
     } catch (error) {
       setGoogleRows([]);
+      setGoogleVideos([]);
       setGoogleInfo({ errors: [{ message: error instanceof Error ? error.message : "Falha ao consultar Google Ads." }] });
       setGoogleSync("error");
     }
@@ -143,6 +151,9 @@ function Page() {
     void syncGoogleAds(true);
     void syncMetaAds(true);
   }, [mes]);
+
+  const gruposVideos = [...new Set(googleVideos.map((v)=>v.bracket).filter(Boolean))].sort();
+  const videosVisiveis = googleVideos.filter((v) => (grupoVideo === "Todos" || v.bracket === grupoVideo) && (!busca.trim() || [v.campaignName, v.adName, v.bracket].some((x)=>x.toLowerCase().includes(busca.trim().toLowerCase()))));
 
   const dadosManuais = useMemo(() => s.trafegoPago.filter((x) => x.competencia === mes), [s.trafegoPago, mes]);
   const dadosGoogle = useMemo<TrafegoPago[]>(() => googleRows.map((x) => ({
@@ -374,6 +385,27 @@ function Page() {
           {!dadosDaAba.length && <div className="py-8 text-center text-sm text-muted-foreground">{googleSync === "loading" || metaSync === "loading" ? "Consultando plataformas..." : "Nenhuma campanha encontrada para esta aba e competência."}</div>}
         </div>
       </Panel>
+
+      {tab === "google" && <Panel title="Vídeos por campanha · Google Ads" className="mt-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">TrueView, impressões e CPM por anúncio em vídeo. Filtre pelo identificador entre colchetes no nome da campanha.</p>
+          <select className={inputCls} aria-label="Campanha entre colchetes" value={grupoVideo} onChange={(e)=>setGrupoVideo(e.target.value)}>
+            <option value="Todos">Todos os grupos [ ]</option>
+            {gruposVideos.map((grupo)=><option value={grupo} key={grupo}>{grupo}</option>)}
+          </select>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead><tr className="border-b text-left text-xs uppercase text-muted-foreground"><th className="pb-2">Campanha [ ]</th><th>Vídeo / anúncio</th><th>Visualizações TrueView</th><th>Impressões</th><th>CPM médio</th><th>Investimento</th></tr></thead>
+            <tbody>{videosVisiveis.map((v)=><tr key={v.customerId+":"+v.campaignId+":"+v.adId} className="border-b last:border-0">
+              <td className="py-3"><div className="font-semibold">{v.bracket || "Sem [ ]"}</div><div className="text-xs text-muted-foreground">{v.campaignName}</div></td>
+              <td>{v.adName}</td><td>{num(v.trueView)}</td><td>{num(v.impressions)}</td><td>{brl(v.cpm)}</td><td>{brl(v.cost)}</td>
+            </tr>)}</tbody>
+          </table>
+          {!videosVisiveis.length && <div className="py-6 text-center text-sm text-muted-foreground">Nenhum anúncio em vídeo retornado para este mês/filtro. Campanhas Performance Max podem exigir um relatório de recursos separado.</div>}
+        </div>
+        {!!googleInfo.errors?.some((e)=>e.message.includes("Detalhamento de vídeos")) && <p className="mt-3 text-xs text-warn">O detalhamento de vídeos teve uma falha na API. Confira o aviso de sincronização acima; os totais de campanhas permanecem independentes.</p>}
+      </Panel>}
 
       {tab !== "geral" && <Panel title="Origem dos dados" className="mt-4">
         <div className="grid gap-3 md:grid-cols-3 text-sm">
