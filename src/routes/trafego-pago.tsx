@@ -372,7 +372,16 @@ function Page() {
       </Panel>}
 
       <Panel title="Evolução mensal" className="mt-4">
-        <div className="h-72"><ResponsiveContainer><AreaChart data={historico}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} /><Tooltip /><Area dataKey="investimento" name="Investimento" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} /><Area dataKey="resultados" name="Resultados" stroke="var(--foreground)" fill="var(--foreground)" fillOpacity={0.04} strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
+        <p className="mb-3 text-xs text-muted-foreground">Comparativo histórico a partir dos meses registrados no BI. Valores do Google Ads e Meta Ads consultados apenas para a competência selecionada não são apresentados como histórico.</p>
+        {historico.length < 2 ? (
+          <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[.02] px-5 text-center">
+            <BarChart3 className="mb-3 h-7 w-7 text-muted-foreground" />
+            <div className="font-bold">Ainda não há meses suficientes para comparar</div>
+            <p className="mt-2 max-w-lg text-sm text-muted-foreground">O gráfico de evolução precisa de pelo menos dois meses de dados históricos. Assim evitamos exibir um único ponto como se fosse uma tendência.</p>
+          </div>
+        ) : (
+          <div className="h-72"><ResponsiveContainer><AreaChart data={historico}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} /><Tooltip formatter={(valor, nome) => [nome === "Investimento" ? brl(Number(valor)) : Number(valor).toLocaleString("pt-BR"), nome]} /><Area dataKey="investimento" name="Investimento" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} /><Area dataKey="resultados" name="Resultados" stroke="var(--foreground)" fill="var(--foreground)" fillOpacity={0.04} strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
+        )}
       </Panel>
 
       <TrafegoModal open={open} onClose={() => setOpen(false)} mes={mes} />
