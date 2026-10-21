@@ -18,6 +18,7 @@ type GoogleAdsMetricRow = {
   currency: string;
   campaignId: string;
   campaignName: string;
+  campaignStatus: string;
   channelType: string;
   cost: number;
   impressions: number;
@@ -94,6 +95,7 @@ function Page() {
   const [googleRows, setGoogleRows] = useState<GoogleAdsMetricRow[]>([]);
   const [googleVideos, setGoogleVideos] = useState<GoogleVideoRow[]>([]);
   const [grupoVideo, setGrupoVideo] = useState("Todos");
+  const [statusGoogle, setStatusGoogle] = useState("ENABLED");
   const [googleSync, setGoogleSync] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [googleInfo, setGoogleInfo] = useState<GoogleAdsMetricsResponse>({});
   const [metaRows, setMetaRows] = useState<MetaAdsMetricRow[]>([]);
@@ -369,11 +371,20 @@ function Page() {
         </Panel>
       </div>
 
+      {tab === "google" && <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[.02] p-3">
+        <span className="text-sm font-bold">Status das campanhas:</span>
+        <select className={inputCls} aria-label="Filtrar status das campanhas do Google Ads" value={statusGoogle} onChange={(e)=>setStatusGoogle(e.target.value)}>
+          <option value="ENABLED">Ativas</option><option value="PAUSED">Pausadas</option><option value="Todos">Todas</option>
+        </select>
+        <Badge tone="success">{googleRows.filter((x)=>x.campaignStatus==="ENABLED").length} ativas</Badge>
+        <Badge>{googleRows.filter((x)=>x.campaignStatus==="PAUSED").length} pausadas</Badge>
+        <span className="text-xs text-muted-foreground">Ativa significa habilitada no Google Ads; entrega de anúncios depende também de orçamento, aprovação e elegibilidade.</span>
+      </div>}
       <Panel title={tab==="geral" ? "Campanhas do relatório mensal" : tab==="google" ? "Campanhas · Google Ads" : "Campanhas · Meta Business"} className="mt-4">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1050px] text-sm">
             <thead><tr className="border-b text-left text-xs uppercase text-muted-foreground"><th className="pb-2">Plataforma</th><th>Campanha</th><th>Objetivo</th><th>Filial</th><th>Investimento</th><th>Impressões</th><th>Cliques</th><th>CTR</th><th>Resultados</th><th>Custo/result.</th></tr></thead>
-            <tbody>{dadosDaAba.map((x) => {
+            <tbody>{dadosDaAba.filter((x)=>tab !== "google" || !x.id.startsWith("google-") || statusGoogle === "Todos" || googleRows.some((row)=>`google-${row.customerId}-${row.campaignId}`===x.id && row.campaignStatus===statusGoogle)).map((x) => {
               const filial = s.filiais.find((f) => f.id === x.filialId);
               const xctr = x.impressoes ? x.cliques / x.impressoes * 100 : 0;
               const xcpr = x.resultados ? x.investimento / x.resultados : 0;
