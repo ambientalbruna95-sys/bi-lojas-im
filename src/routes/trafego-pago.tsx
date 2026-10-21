@@ -86,6 +86,8 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TrafegoTab>("geral");
   const [busca, setBusca] = useState("");
+  const [periodoHistorico, setPeriodoHistorico] = useState<6 | 12>(6);
+  const [metricaHistorico, setMetricaHistorico] = useState<"investimento" | "impressoes" | "cliques" | "resultados">("investimento");
   const [googleRows, setGoogleRows] = useState<GoogleAdsMetricRow[]>([]);
   const [googleSync, setGoogleSync] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [googleInfo, setGoogleInfo] = useState<GoogleAdsMetricsResponse>({});
@@ -225,16 +227,26 @@ function Page() {
   }).filter((x) => x.investimento || x.resultados || x.cliques);
 
   const historico = useMemo(() => {
-    const meses = [...new Set(s.trafegoPago.map((x) => x.competencia))].sort();
-    return meses.map((m) => {
-      const arr = s.trafegoPago.filter((x) => x.competencia === m);
+    // Só dados de períodos efetivamente registrados; meses ausentes ficam nulos.
+    const atual = /^\d{4}-\d{2}$/.test(mes) ? mes : new Date().toISOString().slice(0, 7);
+    const [ano, mesNumero] = atual.split("-").map(Number);
+    return Array.from({ length: periodoHistorico }, (_, i) => {
+      const data = new Date(Date.UTC(ano, mesNumero - periodoHistorico + i, 1));
+      const competencia = data.toISOString().slice(0, 7);
+      const registros = s.trafegoPago.filter((x) => x.competencia === competencia && (tab === "geral" || x.plataforma === (tab === "google" ? "Google Ads" : "Meta Ads")));
       return {
-        mes: m.slice(5) + "/" + m.slice(2,4),
-        investimento: arr.reduce((a,x) => a+x.investimento,0),
-        resultados: arr.reduce((a,x) => a+x.resultados,0),
+        mes: competencia.slice(5) + "/" + competencia.slice(2, 4),
+        competencia,
+        temDados: registros.length > 0,
+        investimento: registros.length ? registros.reduce((a,x) => a + x.investimento, 0) : null,
+        impressoes: registros.length ? registros.reduce((a,x) => a + x.impressoes, 0) : null,
+        cliques: registros.length ? registros.reduce((a,x) => a + x.cliques, 0) : null,
+        resultados: registros.length ? registros.reduce((a,x) => a + x.resultados, 0) : null,
       };
     });
-  }, [s.trafegoPago]);
+  }, [s.trafegoPago, mes, periodoHistorico, tab]);
+  const mesesComHistorico = historico.filter((x) => x.temDados).length;
+  const metricaNomeHistorico = ({ investimento: "Investimento", impressoes: "Impressões", cliques: "Cliques", resultados: "Resultados" } as const)[metricaHistorico];
 
   return (
     <>
@@ -372,16 +384,23 @@ function Page() {
       </Panel>}
 
       <Panel title="Evolução mensal" className="mt-4">
-        <p className="mb-3 text-xs text-muted-foreground">Comparativo histórico a partir dos meses registrados no BI. Valores do Google Ads e Meta Ads consultados apenas para a competência selecionada não são apresentados como histórico.</p>
-        {historico.length < 2 ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-2xl text-xs text-muted-foreground">Histórico dos registros mensais armazenados no BI, filtrado pela plataforma selecionada. Meses sem registros não são considerados zero.</p>
+          <div className="flex flex-wrap gap-2">
+            <select aria-label="Período do histórico" className={inputCls} value={periodoHistorico} onChange={(e)=>setPeriodoHistorico(Number(e.target.value) as 6 | 12)}><option value={6}>Últimos 6 meses</option><option value={12}>Últimos 12 meses</option></select>
+            <select aria-label="Métrica do histórico" className={inputCls} value={metricaHistorico} onChange={(e)=>setMetricaHistorico(e.target.value as typeof metricaHistorico)}><option value="investimento">Investimento (R$)</option><option value="impressoes">Impressões</option><option value="cliques">Cliques</option><option value="resultados">Resultados</option></select>
+          </div>
+        </div>
+        {mesesComHistorico < 2 ? (
           <div className="flex min-h-48 flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[.02] px-5 text-center">
             <BarChart3 className="mb-3 h-7 w-7 text-muted-foreground" />
-            <div className="font-bold">Ainda não há meses suficientes para comparar</div>
-            <p className="mt-2 max-w-lg text-sm text-muted-foreground">O gráfico de evolução precisa de pelo menos dois meses de dados históricos. Assim evitamos exibir um único ponto como se fosse uma tendência.</p>
+            <div className="font-bold">Histórico insuficiente para comparar</div>
+            <p className="mt-2 max-w-lg text-sm text-muted-foreground">Há {mesesComHistorico} {mesesComHistorico === 1 ? "mês registrado" : "meses registrados"} neste período para esta plataforma. São necessários dois ou mais. A sincronização atual da API não cria automaticamente histórico dos meses anteriores.</p>
           </div>
         ) : (
-          <div className="h-72"><ResponsiveContainer><AreaChart data={historico}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} /><Tooltip formatter={(valor, nome) => [nome === "Investimento" ? brl(Number(valor)) : Number(valor).toLocaleString("pt-BR"), nome]} /><Area dataKey="investimento" name="Investimento" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} /><Area dataKey="resultados" name="Resultados" stroke="var(--foreground)" fill="var(--foreground)" fillOpacity={0.04} strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
+          <div className="h-72"><ResponsiveContainer><AreaChart data={historico}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="mes" fontSize={11} /><YAxis fontSize={11} /><Tooltip formatter={(valor) => [metricaHistorico === "investimento" ? brl(Number(valor)) : Number(valor).toLocaleString("pt-BR"), metricaNomeHistorico]} /><Area connectNulls={false} type="monotone" dataKey={metricaHistorico} name={metricaNomeHistorico} stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.12} strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
         )}
+        <p className="mt-3 text-xs text-muted-foreground">{mesesComHistorico} de {periodoHistorico} meses com registros. Para comparar dados históricos da Google Ads API e Meta Ads, será necessário consultar e armazenar cada competência separadamente.</p>
       </Panel>
 
       <TrafegoModal open={open} onClose={() => setOpen(false)} mes={mes} />
