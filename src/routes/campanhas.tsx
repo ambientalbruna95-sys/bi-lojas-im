@@ -10,10 +10,10 @@ export const Route = createFileRoute("/campanhas")({
   component: Page,
 });
 
-type AbaCampanha = "Resumo" | "Filiais e verba" | "Artes" | "Produtos" | "Produtos para vídeo de Growth" | "Apoiadores";
+type AbaCampanha = "Atividades" | "Resumo" | "Filiais e verba" | "Artes" | "Produtos" | "Produtos para vídeo de Growth" | "Apoiadores";
 type FormatoPeca = "Feed" | "Stories" | "Banner";
 
-const ABAS_CAMPANHA: AbaCampanha[] = ["Resumo", "Filiais e verba", "Artes", "Produtos", "Produtos para vídeo de Growth", "Apoiadores"];
+const ABAS_CAMPANHA: AbaCampanha[] = ["Resumo", "Atividades", "Filiais e verba", "Artes", "Produtos", "Produtos para vídeo de Growth", "Apoiadores"];
 
 const FORMATOS = [
   { k: "Feed", ratio: "aspect-square", dim: "1080×1080" },
@@ -79,6 +79,8 @@ function Page() {
   const [selId, setSelId] = useState<string | null>(null);
   const [abaCampanha, setAbaCampanha] = useState<AbaCampanha>("Resumo");
   const [observacaoRecusa, setObservacaoRecusa] = useState("");
+  const [tarefa, setTarefa] = useState({ titulo: "", descricao: "", funcionarioId: "", data: "", horario: "", prioridade: "Média" as "Alta" | "Média" | "Baixa" });
+  const [editandoTarefa, setEditandoTarefa] = useState<{ funcionarioId: string; atividadeId: string } | null>(null);
   const [anoSelecionado, setAnoSelecionado] = useState<string | null>(String(new Date().getFullYear()));
   const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
   const [filtroBloco, setFiltroBloco] = useState<"Todos" | Campanha["status"]>("Todos");
@@ -88,6 +90,33 @@ function Page() {
   const sel = s.campanhas.find((c) => c.id === selId) ?? null;
   const podeAprovar = s.perfil === "Diretoria" || s.perfil === "Master";
   const podeMontarTabela = podeAprovar;
+  const tarefasCampanha = sel ? s.funcionarios.flatMap((f) => f.atividades.filter((a) => a.sourceCampanhaId === sel.id).map((a) => ({ ...a, funcionarioId: f.id, funcionarioNome: f.nome }))).sort((a,b)=>(a.data||"").localeCompare(b.data||"") || (a.horario||"").localeCompare(b.horario||"")) : [];
+  const salvarTarefaCampanha = () => {
+    if (!sel || !tarefa.titulo.trim() || !tarefa.funcionarioId || !tarefa.data) { toast.error("Informe a atividade, o colaborador e a data."); return; }
+    set((st) => {
+      const anterior = editandoTarefa && st.funcionarios.find((f)=>f.id===editandoTarefa.funcionarioId)?.atividades.find((a)=>a.id===editandoTarefa.atividadeId);
+      const atividade = {
+        ...anterior,
+        id: anterior?.id || uid(), titulo: tarefa.titulo.trim(), descricao: tarefa.descricao.trim(),
+        data: tarefa.data, horario: tarefa.horario || undefined, prioridade: tarefa.prioridade,
+        feito: anterior?.feito || false, status: anterior?.status || ("A fazer" as const),
+        sourceCampanhaId: sel.id, origem: "Campanha" as const,
+      };
+      return { ...st, funcionarios: st.funcionarios.map((f)=>({
+        ...f, atividades: [
+          ...f.atividades.filter((a)=>!(editandoTarefa && f.id===editandoTarefa.funcionarioId && a.id===editandoTarefa.atividadeId)),
+          ...(f.id===tarefa.funcionarioId ? [atividade] : []),
+        ],
+      })) };
+    });
+    setTarefa({ titulo:"", descricao:"", funcionarioId:"", data:"", horario:"", prioridade:"Média" });
+    setEditandoTarefa(null);
+    toast.success("Atividade enviada ao quadro do colaborador.");
+  };
+  const editarTarefaCampanha = (a: typeof tarefasCampanha[number]) => {
+    setEditandoTarefa({funcionarioId:a.funcionarioId, atividadeId:a.id});
+    setTarefa({titulo:a.titulo, descricao:a.descricao || "", funcionarioId:a.funcionarioId, data:a.data, horario:a.horario || "", prioridade:a.prioridade || "Média"});
+  };
   const campanhasPendentes = s.campanhas.filter((c) => c.aprovacao === "Aguardando Diretoria").sort((a,b)=>(a.inicio||"").localeCompare(b.inicio||""));
   const abrirParaAprovacao = (campanha: Campanha) => { setSelId(campanha.id); setAbaCampanha("Resumo"); setObservacaoRecusa(""); };
 
@@ -399,7 +428,7 @@ function Page() {
             <div className="mb-5 overflow-x-auto">
               <div className="flex min-w-max gap-1 rounded-2xl border border-white/8 bg-black/10 p-1.5">
                 {ABAS_CAMPANHA.map((aba) => {
-                  const count = aba === "Produtos"
+                  const count = aba === "Atividades" ? tarefasCampanha.length : aba === "Produtos"
                     ? sel.produtosPromocionais?.length || 0
                     : aba === "Produtos para vídeo de Growth"
                       ? sel.produtosPromocionais?.filter((p) => p.growthVideo).length || 0
@@ -419,6 +448,29 @@ function Page() {
                 })}
               </div>
             </div>
+
+            {abaCampanha === "Atividades" && <div className="space-y-4">
+              <Panel title={editandoTarefa ? "Editar atividade da campanha" : "Distribuir nova atividade"}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Atividade"><input className={inputCls} value={tarefa.titulo} onChange={(e)=>setTarefa((x)=>({...x,titulo:e.target.value}))} placeholder="Ex.: Produzir vídeo da oferta" /></Field>
+                  <Field label="Colaborador responsável"><select className={inputCls} value={tarefa.funcionarioId} onChange={(e)=>setTarefa((x)=>({...x,funcionarioId:e.target.value}))}><option value="">Selecione um colaborador</option>{s.funcionarios.map((f)=><option key={f.id} value={f.id}>{f.nome} · {f.cargo}</option>)}</select></Field>
+                  <Field label="Data de entrega"><input type="date" className={inputCls} value={tarefa.data} onChange={(e)=>setTarefa((x)=>({...x,data:e.target.value}))}/></Field>
+                  <Field label="Horário"><input type="time" className={inputCls} value={tarefa.horario} onChange={(e)=>setTarefa((x)=>({...x,horario:e.target.value}))}/></Field>
+                  <Field label="Prioridade"><select className={inputCls} value={tarefa.prioridade} onChange={(e)=>setTarefa((x)=>({...x,prioridade:e.target.value as typeof tarefa.prioridade}))}><option>Alta</option><option>Média</option><option>Baixa</option></select></Field>
+                  <Field label="Orientações"><textarea rows={2} className={inputCls} value={tarefa.descricao} onChange={(e)=>setTarefa((x)=>({...x,descricao:e.target.value}))} placeholder="Instruções, formatos, links e detalhes" /></Field>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2"><Btn onClick={salvarTarefaCampanha}><Plus className="h-4 w-4"/>{editandoTarefa ? "Salvar alterações" : "Atribuir atividade"}</Btn>{editandoTarefa && <Btn variant="outline" onClick={()=>{setEditandoTarefa(null);setTarefa({titulo:"",descricao:"",funcionarioId:"",data:"",horario:"",prioridade:"Média"});}}>Cancelar edição</Btn>}</div>
+              </Panel>
+              <Panel title={`Atividades vinculadas · ${tarefasCampanha.length}`}>
+                <div className="grid gap-2">
+                  {tarefasCampanha.map((a)=><div key={a.id+"-"+a.funcionarioId} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
+                    <div className="min-w-0"><div className="font-bold">{a.titulo}</div><div className="mt-1 text-xs text-muted-foreground">{a.funcionarioNome} · {fmtDate(a.data)}{a.horario ? ` às ${a.horario}` : ""} · {a.prioridade || "Média"}</div></div>
+                    <div className="flex items-center gap-2"><Badge tone={a.feito || a.status==="Finalizado" ? "success" : a.status==="Realizando" ? "warn" : "muted"}>{a.feito || a.status==="Finalizado" ? "Finalizada" : a.status || "A fazer"}</Badge><Btn variant="outline" onClick={()=>editarTarefaCampanha(a)}><Pencil className="h-4 w-4"/>Editar</Btn></div>
+                  </div>)}
+                  {!tarefasCampanha.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma atividade atribuída. Cadastre acima para ela aparecer automaticamente no quadro do colaborador.</p>}
+                </div>
+              </Panel>
+            </div>}
 
             {abaCampanha === "Resumo" && <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
