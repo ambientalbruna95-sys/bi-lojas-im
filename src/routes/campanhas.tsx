@@ -78,6 +78,7 @@ function Page() {
   const [open, setOpen] = useState(false);
   const [selId, setSelId] = useState<string | null>(null);
   const [abaCampanha, setAbaCampanha] = useState<AbaCampanha>("Resumo");
+  const [observacaoRecusa, setObservacaoRecusa] = useState("");
   const [anoSelecionado, setAnoSelecionado] = useState<string | null>(String(new Date().getFullYear()));
   const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
   const [filtroBloco, setFiltroBloco] = useState<"Todos" | Campanha["status"]>("Todos");
@@ -87,6 +88,8 @@ function Page() {
   const sel = s.campanhas.find((c) => c.id === selId) ?? null;
   const podeAprovar = s.perfil === "Diretoria" || s.perfil === "Master";
   const podeMontarTabela = podeAprovar;
+  const campanhasPendentes = s.campanhas.filter((c) => c.aprovacao === "Aguardando Diretoria").sort((a,b)=>(a.inicio||"").localeCompare(b.inicio||""));
+  const abrirParaAprovacao = (campanha: Campanha) => { setSelId(campanha.id); setAbaCampanha("Resumo"); setObservacaoRecusa(""); };
 
   const upd = (c: Campanha) => {
     set((st) => ({ ...st, campanhas: st.campanhas.map((x) => x.id === c.id ? c : x) }));
@@ -154,6 +157,17 @@ function Page() {
   return (
     <>
       <PageHeader title="Campanhas" sub="Organize por ano e mês antes de abrir cada campanha." action={<Btn onClick={abrirNovaCampanha}><Plus className="h-4 w-4" />Nova campanha</Btn>} />
+
+      {podeAprovar && <Panel title={`Aguardando aprovação da Diretoria · ${campanhasPendentes.length}`}>
+        {campanhasPendentes.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {campanhasPendentes.map((campanha) => <button key={campanha.id} type="button" onClick={() => abrirParaAprovacao(campanha)} className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 text-left transition hover:border-primary/50">
+            <div className="flex items-center justify-between gap-2"><span className="font-bold">{campanha.nome}</span><Badge tone="warn">Pendente</Badge></div>
+            <p className="mt-2 text-xs text-muted-foreground">{fmtDate(campanha.inicio)} – {fmtDate(campanha.fim)} · {brl(campanha.verba)}</p>
+            <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{campanha.proposito || "Sem descrição"}</p>
+            <span className="mt-3 inline-block text-xs font-bold text-primary">Analisar campanha →</span>
+          </button>)}
+        </div> : <p className="text-sm text-muted-foreground">Nenhuma campanha aguardando aprovação no momento.</p>}
+      </Panel>}
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Campanhas" value={String(s.campanhas.length)} hint={`${s.campanhas.filter(c=>c.status==="Ativa").length} ativas`} />
@@ -357,7 +371,7 @@ function Page() {
         </div>}
       </Panel>
 
-      <Modal open={!!sel} onClose={() => setSelId(null)} title={sel?.nome ?? ""} extraWide>
+      <Modal open={!!sel} onClose={() => { setSelId(null); setObservacaoRecusa(""); }} title={sel?.nome ?? ""} extraWide>
         {sel && (
           <div>
             <div className="mb-4 flex justify-end">
@@ -442,15 +456,31 @@ function Page() {
                     <p className="mt-2 max-w-2xl text-sm text-muted-foreground">O Gerente de Marketing estrutura a campanha e envia para aprovação. A Diretoria aprova a campanha, as peças e monta a tabela de produtos promocionais.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {!podeAprovar && (sel.aprovacao === "Rascunho" || sel.aprovacao === "Ajustes solicitados") && <Btn onClick={() => { upd({ ...sel, aprovacao: "Aguardando Diretoria" }); toast.success("Campanha enviada para aprovação da Diretoria."); }}><Send className="h-4 w-4" />Enviar para Diretoria</Btn>}
+                    {!podeAprovar && (sel.aprovacao === "Rascunho" || sel.aprovacao === "Ajustes solicitados") && <Btn onClick={() => { upd({ ...sel, aprovacao: "Aguardando Diretoria", observacaoAprovacao: undefined, aprovadoPor: undefined, aprovadoEm: undefined }); toast.success("Campanha enviada para aprovação da Diretoria."); }}><Send className="h-4 w-4" />Enviar para Diretoria</Btn>}
                     {podeAprovar && sel.aprovacao !== "Aprovada" && <Btn onClick={() => {
                       const usuario = s.usuarios.find((u) => u.id === s.usuarioAtivoId);
-                      upd({ ...sel, aprovacao: "Aprovada", aprovadoPor: usuario?.nome || "Diretoria", aprovadoEm: new Date().toISOString() });
+                      upd({ ...sel, aprovacao: "Aprovada", observacaoAprovacao: undefined, aprovadoPor: usuario?.nome || "Diretoria", aprovadoEm: new Date().toISOString() });
                       toast.success("Campanha aprovada.");
                     }}><CheckCircle2 className="h-4 w-4" />Aprovar campanha</Btn>}
-                    {podeAprovar && sel.aprovacao !== "Ajustes solicitados" && <Btn variant="outline" onClick={() => upd({ ...sel, aprovacao: "Ajustes solicitados", aprovadoPor: undefined, aprovadoEm: undefined })}>Solicitar ajustes</Btn>}
+                    {podeAprovar && sel.aprovacao !== "Ajustes solicitados" && <Btn variant="outline" onClick={() => {
+                      const motivo = observacaoRecusa.trim();
+                      if (!motivo) { toast.error("Informe o motivo da não aprovação antes de solicitar ajustes."); return; }
+                      const usuario = s.usuarios.find((u) => u.id === s.usuarioAtivoId);
+                      upd({ ...sel, aprovacao: "Ajustes solicitados", observacaoAprovacao: motivo, aprovadoPor: usuario?.nome || "Diretoria", aprovadoEm: new Date().toISOString() });
+                      setObservacaoRecusa("");
+                      toast.success("Campanha devolvida com justificativa para ajustes.");
+                    }}>Não aprovar / Solicitar ajustes</Btn>}
                   </div>
                 </div>
+                {podeAprovar && sel.aprovacao !== "Aprovada" && <div className="mt-4">
+                  <Field label="Justificativa da não aprovação (obrigatória para solicitar ajustes)">
+                    <textarea rows={3} className={inputCls} value={observacaoRecusa} onChange={(e) => setObservacaoRecusa(e.target.value)} placeholder="Explique o que precisa mudar: verba, ofertas, artes, período ou estratégia..." />
+                  </Field>
+                </div>}
+                {sel.observacaoAprovacao && sel.aprovacao === "Ajustes solicitados" && <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
+                  <div className="font-bold">Motivo da não aprovação</div>
+                  <p className="mt-1 whitespace-pre-wrap">{sel.observacaoAprovacao}</p>
+                </div>}
               </Panel>
 
               <Panel title="Propósito da campanha">
