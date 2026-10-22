@@ -605,35 +605,10 @@ function Dashboard() {
       <PageHeader
         title="Dashboard de Resultados"
         sub="Meta, faturamento, ranking das filiais e impacto do investimento de marketing."
-        action={<div className="flex flex-wrap gap-2">
-          <Btn variant="outline" onClick={()=>{ void sincronizarGestao(false); setGestaoRefreshKey((x)=>x+1); }} disabled={gestaoSync==="loading" || filiaisGestaoSync==="loading" || despesasGestaoSync==="loading" || despesasResumoSync==="loading"}><RefreshCw className={`h-4 w-4 ${gestaoSync==="loading"||filiaisGestaoSync==="loading"||despesasGestaoSync==="loading"||despesasResumoSync==="loading"?"animate-spin":""}`}/>Sincronizar GestãoIM</Btn>
-          <Link to="/vendas" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3.5 py-2.5 text-sm font-bold hover:border-primary/30"><FileSpreadsheet className="h-4 w-4"/>Histórico</Link>
-        </div>}
+        action={<Link to="/vendas" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3.5 py-2.5 text-sm font-bold hover:border-primary/30"><FileSpreadsheet className="h-4 w-4"/>Histórico</Link>}
       />
 
       <JRetailDashboard />
-      <details className="mb-3 rounded-xl border border-white/10 bg-white/[.015] px-3 py-2 text-xs">
-        <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 text-muted-foreground">
-          <span className="font-semibold text-foreground">Conexões e sincronização</span>
-          <span>{gestaoSync==="ok" ? "● Resumo conectado" : "● GestãoIM indisponível"} · {filiaisGestaoSync==="ok" ? "Filiais sincronizadas" : "Filiais: dados salvos"} · {despesasResumoSync==="ok" ? "Despesas sincronizadas" : "Despesas pendentes"}</span>
-        </summary>
-        <div className="mt-3 grid gap-2 border-t border-white/10 pt-3 text-muted-foreground sm:grid-cols-3">
-          <p><b className="text-foreground">Resumo</b><span className="block">{gestaoSync==="ok"?"Atualizado":gestaoNaoConfigurado?"Conexão não configurada":"Sem conexão nesta tentativa"}</span></p>
-          <p><b className="text-foreground">Filiais</b><span className="block">{filiaisGestaoSync==="ok"?`${filiaisGestaoInfo.total} filial(is) recebida(s)`:filiaisGestaoInfo.error||"Sincronização pendente"}</span></p>
-          <p><b className="text-foreground">Despesas</b><span className="block">{despesasResumoSync==="ok"?"Atualizadas":despesasResumoInfo.error||"Sincronização pendente"}</span></p>
-        </div>
-        <p className="mt-2 text-muted-foreground">Se houver falha, a última fotografia importada permanece disponível para consulta.</p>
-      </details>
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-primary/15 bg-primary/[.035] p-4">
-        <div className="min-w-[240px] flex-1">
-          <div className="font-display font-black">Importar Metas GestãoIM / Metabase</div>
-          <p className="mt-1 text-xs text-muted-foreground">Exporte em XLSX ou CSV. O BI reconhece tanto o relatório do Metabase (C1, VR_META, VR_VENDA) quanto o export de Metas do GestãoIM (Nível, Nome, Meta, Vendido).</p>
-        </div>
-        <Field label="Data do relatório"><input type="date" className={inputCls} value={dataImportacao} onChange={(e)=>setDataImportacao(e.target.value)}/></Field>
-        <Btn onClick={()=>uploadRef.current?.click()}><Upload className="h-4 w-4"/>Importar Metas</Btn>
-        <input ref={uploadRef} type="file" accept=".xlsx,.xls,.csv" hidden onChange={(e)=>{const file=e.target.files?.[0];if(file)void importar(file);e.target.value="";}}/>
-      </div>
-
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-white/7 bg-white/[.02] p-3">
         <div className="flex gap-1 rounded-xl border border-white/7 bg-black/10 p-1">
           {(["Dia","Mês","Ano"] as Periodo[]).map((p)=><button key={p} onClick={()=>setPeriodo(p)} className={`rounded-lg px-4 py-2 text-sm font-black transition ${periodo===p?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-white/[.05] hover:text-foreground"}`}>{p}</button>)}
@@ -644,25 +619,10 @@ function Dashboard() {
         <div className="ml-auto text-xs text-muted-foreground"><CalendarDays className="mr-1 inline h-3.5 w-3.5"/>Período analisado: <b className="text-foreground">{tituloPeriodo}</b></div>
       </div>
 
-      {semDados && <div className="mb-4 rounded-2xl border border-warn/25 bg-warn/5 p-4">
-        <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 text-warn"/><div><div className="font-bold">Aguardando dados por filial</div><p className="mt-1 text-sm text-muted-foreground">O consolidado do GestãoIM pode estar disponível mesmo quando a rota detalhada por filial ainda não foi localizada. O BI não inventa valores: ranking e raio-X só aparecem quando recebe Meta e Faturamento reais de cada loja.</p></div></div>
-      </div>}
+      
+      
 
-      {baseIncompleta && !usarFotografiaFiliais && <div className="mb-4 rounded-2xl border border-warn/25 bg-warn/5 p-4">
-        <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 text-warn"/><div><div className="font-bold">O arquivo do Metabase é acumulado</div><p className="mt-1 text-sm text-muted-foreground">O BI salvou a fotografia do dia corretamente. Para calcular DIA e MÊS sem inventar valores, ele precisa também de uma fotografia anterior. O modo ANO já pode usar o acumulado atual; a partir dos próximos uploads diários, as diferenças passam a ser calculadas automaticamente.</p></div></div>
-      </div>}
-
-
-      {usarFotografiaFiliais && <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/[.05] p-4">
-        <div className="flex items-start gap-3">
-          <FileSpreadsheet className="mt-0.5 h-5 w-5 text-primary"/>
-          <div>
-            <div className="font-bold">Filiais atualizadas pela última exportação do GestãoIM</div>
-            <p className="mt-1 text-sm text-muted-foreground">O gráfico principal e o ranking abaixo usam diretamente Meta e Vendido de cada filial da fotografia de <b className="text-foreground">{dataFotografia.split("-").reverse().join("/")}</b>. Quando houver histórico de mais dias, o BI passa a montar a evolução diária/mensal sem inventar valores.</p>
-          </div>
-        </div>
-      </div>}
-
+      
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat accent label="Meta" value={metaTotal!=null?brl(metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.meta_mes)!=null?"GestãoIM · "+(gestaoSummary?.mes_rotulo || tituloPeriodo):somaFotografia?.total?`Fotografia em ${dataFotografia.split("-").reverse().join("/")}`:tituloPeriodo} />
         <Stat label="Faturamento" value={faturamentoTotal!=null?brl(faturamentoTotal):"—"} hint={somaFotografia?.total&&!usarGestao?`Fotografia de ${dataFotografia.split("-").reverse().join("/")}`:atingimento==null?"sem meta no período":`${atingimento.toFixed(1)}% da meta`} />
