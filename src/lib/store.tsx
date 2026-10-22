@@ -161,6 +161,8 @@ export type Campanha = {
 };
 export type Meta = { id: string; titulo: string; alvo: number; atual: number; unidade: string; prazo: string };
 export type Venda = { id: string; filialId: string; data: string; valor: number };
+export type JRetailLinha = { codigo: string; filial: string; vendas: number; pedidos: number | null; ticket: number | null };
+export type JRetailLote = { id: string; inicio: string; fim: string; tipo: "vendas" | "ticket"; arquivo: string; importadoEm: string; linhas: JRetailLinha[] };
 export type ResultadoDiario = { id: string; filialId: string; data: string; meta: number; faturamento: number; origem?: string; modo?: "movimento" | "acumulado" };
 export type PendenciaStatus = "A fazer" | "Realizando" | "Finalizado";
 export type Pendencia = {
@@ -506,6 +508,7 @@ const initial = {
   ] as Meta[],
   vendas: lojas.flatMap((f, i) => Array.from({ length: 6 }, (_, k) => ({ id: uid(), filialId: f.id, data: d(-k * 30), valor: 60000 + ((i + 1) * (k + 3) * 7919) % 70000 }))) as Venda[],
   resultadosDiarios: [] as ResultadoDiario[],
+  jretailLotes: [] as JRetailLote[],
   pendencias: [
     { id: "p1", titulo: "Aprovar arte Black Friday", responsavel: "Bruna Marques", funcionarioId: "e-bruna", prazo: d(1), prioridade: "Alta", feito: false, status: "Realizando", area: "Campanhas", descricao: "Revisar identidade visual e peças principais antes da aprovação final.", checklist: [{ id: uid(), texto: "Feed", feito: true }, { id: uid(), texto: "Stories", feito: false }, { id: uid(), texto: "Banner", feito: false }], comentarios: [] },
     { id: "p2", titulo: "Confirmar entrega de conteúdo da Samira", responsavel: "Bruna Marques", funcionarioId: "e-bruna", prazo: d(2), prioridade: "Média", feito: false, status: "A fazer", area: "Influencers", descricao: "Conferir o combinado do mês e os links de Feed/Stories.", checklist: [], comentarios: [] },
@@ -874,6 +877,7 @@ function sharedStateFromApp(state: AppState): Record<string, unknown> {
     metas: state.metas,
     vendas: state.vendas,
     resultadosDiarios: state.resultadosDiarios,
+    jretailLotes: state.jretailLotes,
     pendencias: state.pendencias,
     volantes: state.volantes,
     custos: state.custos,
@@ -899,6 +903,7 @@ function applySharedState(current: AppState, remote: Record<string, unknown>): A
     ...(Array.isArray(remote.campanhas) ? { campanhas: remote.campanhas as AppState["campanhas"] } : {}),
     ...(Array.isArray(remote.metas) ? { metas: remote.metas as AppState["metas"] } : {}),
     ...(Array.isArray(remote.vendas) ? { vendas: remote.vendas as AppState["vendas"] } : {}),
+    ...(Array.isArray(remote.jretailLotes) ? { jretailLotes: remote.jretailLotes as AppState["jretailLotes"] } : {}),
     ...(Array.isArray(remote.resultadosDiarios) ? { resultadosDiarios: remote.resultadosDiarios as AppState["resultadosDiarios"] } : {}),
     ...(Array.isArray(remote.pendencias) ? { pendencias: remote.pendencias as AppState["pendencias"] } : {}),
     ...(Array.isArray(remote.volantes) ? { volantes: remote.volantes as AppState["volantes"] } : {}),
@@ -983,11 +988,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         reinauguracoes: s.reinauguracoes,
         rotinasDiarias: s.rotinasDiarias,
         coresResponsaveis: s.coresResponsaveis,
+        jretailLotes: s.jretailLotes,
       }));
     } catch {
       // O cache local é só contingência; a fonte principal passa a ser a nuvem.
     }
-  }, [s.resultadosDiarios, s.campanhas, s.contratos, s.influencers, s.usuarios, s.metas, s.pendencias, s.funcionarios, s.custos, s.despesasFixas, s.reinauguracoes, s.rotinasDiarias, s.coresResponsaveis, resultadosStorageReady]);
+  }, [s.resultadosDiarios, s.campanhas, s.contratos, s.influencers, s.usuarios, s.metas, s.pendencias, s.funcionarios, s.custos, s.despesasFixas, s.reinauguracoes, s.rotinasDiarias, s.coresResponsaveis, s.jretailLotes, resultadosStorageReady]);
 
   // Sempre que muda o usuário autenticado, reinicia a sessão de sincronização.
   useEffect(() => {
