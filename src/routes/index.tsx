@@ -109,9 +109,7 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    void sincronizarGestao(true);
-    const timer = window.setInterval(() => void sincronizarGestao(true), 5 * 60 * 1000);
-    return () => window.clearInterval(timer);
+    // Integração antiga desativada. Histórico existente preservado.
   }, []);
 
   const lojas = s.filiais.filter((f) => !f.isCD);
@@ -172,11 +170,10 @@ function Dashboard() {
         setReferencia(dataMaisRecente);
       }
     };
-    void carregarFiliaisGestao();
-    const timer = mes===mesAtual ? window.setInterval(()=>void carregarFiliaisGestao(),5*60*1000) : undefined;
+    // Não atualizar a partir do conector GestãoIM.
     return () => {
       ativo=false;
-      if (timer) window.clearInterval(timer);
+
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mes, gestaoRefreshKey]);
@@ -202,7 +199,7 @@ function Dashboard() {
       });
       setDespesasGestaoSync("ok");
     };
-    void carregarDespesas();
+    // Manter despesas antigas sem sincronização externa.
     return () => { ativo = false; };
     // A sincronização acompanha a competência escolhida no dashboard.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,7 +233,7 @@ function Dashboard() {
       setDespesasResumoSync("ok");
     };
 
-    void carregarResumoDespesas();
+    // Desativar consulta externa de resumo.
     return () => { ativo=false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [despesasResumoRange.de, despesasResumoRange.ate, gestaoRefreshKey]);
@@ -624,7 +621,7 @@ function Dashboard() {
 
       
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat accent label="Meta" value={metaTotal!=null?brl(metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.meta_mes)!=null?"GestãoIM · "+(gestaoSummary?.mes_rotulo || tituloPeriodo):somaFotografia?.total?`Fotografia em ${dataFotografia.split("-").reverse().join("/")}`:tituloPeriodo} />
+        <Stat accent label="Meta" value={metaTotal!=null?brl(metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.meta_mes)!=null?"Relatório salvo · "+(gestaoSummary?.mes_rotulo || tituloPeriodo):somaFotografia?.total?`Fotografia em ${dataFotografia.split("-").reverse().join("/")}`:tituloPeriodo} />
         <Stat label="Faturamento" value={faturamentoTotal!=null?brl(faturamentoTotal):"—"} hint={somaFotografia?.total&&!usarGestao?`Fotografia de ${dataFotografia.split("-").reverse().join("/")}`:atingimento==null?"sem meta no período":`${atingimento.toFixed(1)}% da meta`} />
         <Stat label="% da meta" value={atingimento==null?"—":`${atingimento.toFixed(1)}%`} hint={atingimento==null?"aguardando dados":atingimento>=100?"meta atingida":"abaixo da meta"} />
         <Stat label={usarGestao&&numero(gestaoSummary?.projecao_fechamento)!=null?"Projeção de fechamento":"Diferença para meta"} value={usarGestao&&numero(gestaoSummary?.projecao_fechamento)!=null?brl(numero(gestaoSummary?.projecao_fechamento)!):metaTotal!=null&&faturamentoTotal!=null?brl(faturamentoTotal-metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.projecao_pct)!=null?`${numero(gestaoSummary?.projecao_pct)!.toFixed(1)}% da meta`:metaTotal!=null&&faturamentoTotal!=null?(faturamentoTotal>=metaTotal?"acima da meta":"falta para atingir"):"sem base"} />
@@ -647,7 +644,7 @@ function Dashboard() {
           </div>
         </div>
         {graficoConsolidadoGestao && <div className="mt-3 rounded-xl border border-success/15 bg-success/[.035] p-3 text-xs text-muted-foreground">
-          <b className="text-foreground">Leitura do mês:</b> este gráfico usa os valores reais recebidos automaticamente do GestãoIM: <b className="text-foreground">{brl(metaTotal!)}</b> de meta e <b className="text-foreground">{brl(faturamentoTotal!)}</b> realizado até agora. O detalhamento por dia só aparece quando o BI recebe a série diária; enquanto isso, ele não distribui o faturamento artificialmente pelos dias.
+          <b className="text-foreground">Leitura do mês:</b> este gráfico usa os valores reais recebidos automaticamente do relatório salvo: <b className="text-foreground">{brl(metaTotal!)}</b> de meta e <b className="text-foreground">{brl(faturamentoTotal!)}</b> realizado até agora. O detalhamento por dia só aparece quando o BI recebe a série diária; enquanto isso, ele não distribui o faturamento artificialmente pelos dias.
         </div>}
         {(periodo==="Dia" || usarFotografiaFiliais) && <p className="mt-2 text-xs text-muted-foreground">{usarFotografiaFiliais ? "Cada par de barras representa uma filial da última fotografia importada: Meta x Vendido." : "No modo Dia, o eixo mostra todas as filiais para comparar rapidamente meta e faturamento de cada loja."}</p>}
       </Panel>
@@ -673,19 +670,6 @@ function Dashboard() {
         <div className="mb-3 rounded-xl border border-primary/15 bg-primary/[.035] p-3 text-xs text-muted-foreground">
           <b className="text-foreground">Leitura do ranking:</b> o padrão mostra somente filiais abaixo de 100% da meta, começando pela pior performance. Assim a primeira loja da lista é a que exige atenção mais urgente no período selecionado.
         </div>
-
-        {!rankingTemDados && usarGestao && <div className="mb-4 rounded-xl border border-warn/25 bg-warn/[.05] p-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-2.5">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn"/>
-              <div>
-                <div className="text-sm font-bold">O total da rede está atualizado, mas o GestãoIM ainda não entregou o detalhamento por filial nesta integração.</div>
-                <p className="mt-1 text-xs text-muted-foreground">Para o ranking mostrar Meta, Faturamento e % de cada loja sem inventar dados, importe o relatório por filial do GestãoIM. Depois do primeiro upload, a fotografia fica salva no BI deste navegador e o ranking atualiza imediatamente.</p>
-              </div>
-            </div>
-            <Btn variant="outline" onClick={()=>uploadRef.current?.click()}><Upload className="h-4 w-4"/>Atualizar filiais</Btn>
-          </div>
-        </div>}
 
         <div className="max-h-[520px] overflow-auto">
           <table className="w-full min-w-[900px] text-sm">
@@ -717,7 +701,7 @@ function Dashboard() {
       </Panel>
 
       <Panel
-        title="Despesas Marketing · GestãoIM"
+        title="Despesas de Marketing"
         className="mt-4"
         action={<div className="flex gap-1 rounded-xl border border-white/7 p-1">{(["Filial","Categoria"] as const).map((v)=><button key={v} onClick={()=>setVisaoDespesas(v)} className={`rounded-lg px-3 py-1.5 text-xs font-black ${visaoDespesas===v?"bg-primary text-primary-foreground":"text-muted-foreground hover:bg-white/[.05]"}`}>Por {v.toLowerCase()}</button>)}</div>}
       >
@@ -734,7 +718,7 @@ function Dashboard() {
           >{label}</button>)}
           <div className="ml-auto text-xs text-muted-foreground">
             {despesasResumoSync==="loading"
-              ? "Atualizando GestãoIM..."
+              ? "Atualizando dados..."
               : `${despesasResumoRange.de.split("-").reverse().join("/")} até ${despesasResumoRange.ate.split("-").reverse().join("/")}`}
           </div>
         </div>
@@ -767,13 +751,13 @@ function Dashboard() {
           </div>
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-success/15 bg-success/[.035] p-3 text-xs text-muted-foreground">
-            <span><b className="text-foreground">Fonte:</b> Resumo de Despesas do GestãoIM · filtro {despesasResumoRange.rotulo}. Este bloco é independente do filtro de faturamento da Dashboard.</span>
+            <span><b className="text-foreground">Fonte:</b> Histórico de despesas · filtro {despesasResumoRange.rotulo}. Este bloco é independente do filtro de faturamento da Dashboard.</span>
             {despesasResumoInfo.fetchedAt && <span>Atualizado: {new Date(despesasResumoInfo.fetchedAt).toLocaleString("pt-BR")}</span>}
           </div>
         </> : <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center">
           <WalletCards className="mx-auto h-8 w-8 text-muted-foreground/50"/>
           <div className="mt-2 font-display font-black">{despesasResumoSync==="loading" ? "Atualizando resumo de despesas..." : "Nenhuma despesa encontrada no período"}</div>
-          <p className="mx-auto mt-1 max-w-2xl text-sm text-muted-foreground">{despesasResumoSync==="error" ? (despesasResumoInfo.error || "Não foi possível ler o resumo do GestãoIM agora.") : `Filtro: ${despesasResumoRange.rotulo}`}</p>
+          <p className="mx-auto mt-1 max-w-2xl text-sm text-muted-foreground">{despesasResumoSync==="error" ? (despesasResumoInfo.error || "Não foi possível ler o resumo das despesas agora.") : `Filtro: ${despesasResumoRange.rotulo}`}</p>
         </div>}
       </Panel>
 
@@ -814,7 +798,7 @@ function Dashboard() {
             <Megaphone className="h-4 w-4 text-primary"/>
             <b>Leitura estratégica:</b>
             <span className="text-muted-foreground">{periodo==="Mês" && vendasDiariasGestaoSync==="ok"
-              ? "o faturamento de cada dia vem diretamente do GestãoIM e é cruzado com as despesas registradas naquele mesmo dia. Dias futuros ficam sem faturamento, em vez de aparecerem como zero."
+              ? "o faturamento de cada dia vem dos registros salvos e é cruzado com as despesas registradas naquele mesmo dia. Dias futuros ficam sem faturamento, em vez de aparecerem como zero."
               : "o gráfico usa apenas os dados disponíveis no período e não distribui artificialmente o faturamento pelos dias."}</span>
           </div>
           {!!pontosSemInvestimento.length && <div className="mt-2 flex flex-wrap gap-1.5">{pontosSemInvestimento.slice(0,18).map((x,i)=><Badge key={`${x.eixo}-${i}`} tone="muted">Vendeu sem investimento · {x.eixo}</Badge>)}{pontosSemInvestimento.length>18&&<Badge tone="muted">+{pontosSemInvestimento.length-18}</Badge>}</div>}
