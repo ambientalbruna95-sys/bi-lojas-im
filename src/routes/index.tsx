@@ -324,8 +324,25 @@ function Dashboard() {
       })()
     : "";
   const usarGestao = periodo === "Mês" && !!gestaoSummary && (!mesAtualGestao || mesAtualGestao === mes);
-  const metaTotal = usarGestao ? numero(gestaoSummary?.meta_mes) : rede.meta;
-  const faturamentoTotal = usarGestao && gestaoFat != null ? gestaoFat : rede.faturamento;
+  // Se a integração ficar indisponível, preservar a última fotografia real.
+  // Fotografia acumulada NÃO é venda diária: exibir referência e origem.
+  const somaFotografia = usarFotografiaFiliais
+    ? lojas.reduce((acc, filial) => {
+        const foto = snapshotDaFilial(filial.id);
+        if (foto) {
+          acc.meta += Number.isFinite(foto.meta) ? foto.meta : 0;
+          acc.faturamento += Number.isFinite(foto.faturamento) ? foto.faturamento : 0;
+          acc.total += 1;
+        }
+        return acc;
+      }, { meta: 0, faturamento: 0, total: 0 })
+    : null;
+  const metaTotal = usarGestao && numero(gestaoSummary?.meta_mes) != null
+    ? numero(gestaoSummary?.meta_mes)
+    : somaFotografia?.total ? somaFotografia.meta : rede.meta;
+  const faturamentoTotal = usarGestao && gestaoFat != null
+    ? gestaoFat
+    : somaFotografia?.total ? somaFotografia.faturamento : rede.faturamento;
   const atingimento = usarGestao && numero(gestaoSummary?.pct_achieved) != null
     ? numero(gestaoSummary?.pct_achieved)
     : metaTotal && faturamentoTotal != null ? (faturamentoTotal/metaTotal)*100 : null;
@@ -671,8 +688,8 @@ function Dashboard() {
       </div>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat accent label="Meta" value={metaTotal!=null?brl(metaTotal):"—"} hint={usarGestao?"GestãoIM · "+(gestaoSummary?.mes_rotulo || tituloPeriodo):tituloPeriodo} />
-        <Stat label="Faturamento" value={faturamentoTotal!=null?brl(faturamentoTotal):"—"} hint={atingimento==null?"sem meta no período":`${atingimento.toFixed(1)}% da meta`} />
+        <Stat accent label="Meta" value={metaTotal!=null?brl(metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.meta_mes)!=null?"GestãoIM · "+(gestaoSummary?.mes_rotulo || tituloPeriodo):somaFotografia?.total?`Fotografia em ${dataFotografia.split("-").reverse().join("/")}`:tituloPeriodo} />
+        <Stat label="Faturamento" value={faturamentoTotal!=null?brl(faturamentoTotal):"—"} hint={somaFotografia?.total&&!usarGestao?`Fotografia de ${dataFotografia.split("-").reverse().join("/")}`:atingimento==null?"sem meta no período":`${atingimento.toFixed(1)}% da meta`} />
         <Stat label="% da meta" value={atingimento==null?"—":`${atingimento.toFixed(1)}%`} hint={atingimento==null?"aguardando dados":atingimento>=100?"meta atingida":"abaixo da meta"} />
         <Stat label={usarGestao&&numero(gestaoSummary?.projecao_fechamento)!=null?"Projeção de fechamento":"Diferença para meta"} value={usarGestao&&numero(gestaoSummary?.projecao_fechamento)!=null?brl(numero(gestaoSummary?.projecao_fechamento)!):metaTotal!=null&&faturamentoTotal!=null?brl(faturamentoTotal-metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.projecao_pct)!=null?`${numero(gestaoSummary?.projecao_pct)!.toFixed(1)}% da meta`:metaTotal!=null&&faturamentoTotal!=null?(faturamentoTotal>=metaTotal?"acima da meta":"falta para atingir"):"sem base"} />
       </div>
