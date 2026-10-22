@@ -1,3 +1,4 @@
+import { JRetailDashboard } from "@/components/JRetailDashboard";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -676,6 +677,7 @@ function Dashboard() {
         <Stat label={usarGestao&&numero(gestaoSummary?.projecao_fechamento)!=null?"Projeção de fechamento":"Diferença para meta"} value={usarGestao&&numero(gestaoSummary?.projecao_fechamento)!=null?brl(numero(gestaoSummary?.projecao_fechamento)!):metaTotal!=null&&faturamentoTotal!=null?brl(faturamentoTotal-metaTotal):"—"} hint={usarGestao&&numero(gestaoSummary?.projecao_pct)!=null?`${numero(gestaoSummary?.projecao_pct)!.toFixed(1)}% da meta`:metaTotal!=null&&faturamentoTotal!=null?(faturamentoTotal>=metaTotal?"acima da meta":"falta para atingir"):"sem base"} />
       </div>
 
+      <JRetailDashboard />
       <Panel title={usarFotografiaFiliais ? `Meta x Realizado por filial · ${dataFotografia.split("-").reverse().join("/")}` : graficoConsolidadoGestao ? `Meta x Realizado · ${gestaoSummary?.mes_rotulo || tituloPeriodo}` : `Meta x Realizado · ${periodo}`} className="mt-4" action={<Badge tone="primary">GRÁFICO PRINCIPAL</Badge>}>
         <div className={periodo==="Dia" || usarFotografiaFiliais ? "overflow-x-auto" : ""}>
           <div className={periodo==="Dia" || usarFotografiaFiliais ? "h-[380px] min-w-[1650px]" : graficoConsolidadoGestao ? "h-[320px]" : "h-[360px]"}>
