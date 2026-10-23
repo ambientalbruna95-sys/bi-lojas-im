@@ -31,6 +31,22 @@ export function JRetailDashboard() {
   const [dataFiltro,setDataFiltro]=useState("");
   const filiais=new Map(s.filiais.filter(f=>!f.isCD).map(f=>[String(f.codigo).padStart(2,"0"),f]));
   const historico=s.jretailLotes ?? [];
+  // Operational snapshots from the existing central state are cumulative.
+  // Display them without pretending they are independent daily sales.
+  const snapshots = useMemo(() => {
+    const map = new Map<string, { data:string; filiais:Set<string>; meta:number; faturamento:number }>();
+    for (const r of s.resultadosDiarios || []) {
+      if (!r.data || !filiais.has(String(s.filiais.find(f=>f.id===r.filialId)?.codigo || "").padStart(2,"0"))) continue;
+      const atual = map.get(r.data) || { data:r.data, filiais:new Set<string>(), meta:0, faturamento:0 };
+      if (atual.filiais.has(r.filialId)) continue;
+      atual.filiais.add(r.filialId);
+      atual.meta += Number(r.meta) || 0;
+      atual.faturamento += Number(r.faturamento) || 0;
+      map.set(r.data, atual);
+    }
+    return [...map.values()].sort((a,b)=>a.data.localeCompare(b.data));
+  }, [s.resultadosDiarios,s.filiais]);
+
   async function carregar(file:File) {
     setErro("");setPreview([]);setFileName(file.name);
     try {
@@ -68,6 +84,20 @@ export function JRetailDashboard() {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h2 className="text-lg font-bold">Integração JRetail · Histórico comercial</h2><p className="text-xs text-muted-foreground">Importação assistida, preservando as datas e o histórico de cada relatório.</p></div>
       <span className="rounded-full border border-white/10 px-3 py-1 text-xs">{historico.length} arquivos registrados</span>
+    </div>
+    <div className="mt-4 rounded-xl border border-white/10 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-semibold">Histórico de resultados já salvo na base central</h3>
+        <span className="text-xs text-muted-foreground">{snapshots.length} datas · {s.resultadosDiarios?.length || 0} registros de filiais</span>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">Fotografias acumuladas por data: não somar os totais de dias diferentes. Relatórios JRetail importados separadamente aparecem abaixo.</p>
+      {snapshots.length ? <>
+        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[580px] text-left text-xs">
+          <thead><tr className="border-b border-white/10 text-muted-foreground"><th className="py-2">Data</th><th>Filiais</th><th>Meta</th><th>Faturamento acumulado</th><th>Atingimento</th></tr></thead>
+          <tbody>{snapshots.map(d=><tr key={d.data} className="border-b border-white/5"><td className="py-2">{d.data}</td><td>{d.filiais.size}</td><td>{brl(d.meta)}</td><td>{brl(d.faturamento)}</td><td>{d.meta>0?(100*d.faturamento/d.meta).toFixed(1)+"%":"—"}</td></tr>)}</tbody>
+        </table></div>
+        <div className="mt-4 h-56"><ResponsiveContainer><LineChart data={snapshots}><CartesianGrid strokeDasharray="3 3" opacity={.2}/><XAxis dataKey="data"/><YAxis/><Tooltip formatter={(v)=>brl(Number(v))}/><Line type="monotone" dataKey="faturamento" name="Faturamento acumulado" stroke="var(--primary)" connectNulls={false}/></LineChart></ResponsiveContainer></div>
+      </> : <p className="mt-2 text-xs text-muted-foreground">Nenhuma fotografia comercial registrada.</p>}
     </div>
     <div className="mt-4 grid gap-3 md:grid-cols-4">
       <label className="text-xs">Tipo de relatório<select className="mt-1 w-full rounded-lg border border-white/15 bg-background p-2" value={tipo} onChange={e=>{setTipo(e.target.value as "vendas"|"ticket");setPreview([])}}><option value="vendas">Vendas (VR)</option><option value="ticket">Ticket e pedidos</option></select></label>
