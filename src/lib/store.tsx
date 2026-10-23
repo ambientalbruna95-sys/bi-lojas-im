@@ -144,6 +144,7 @@ export type Campanha = {
   aprovadoPor?: string;
   aprovadoEm?: string;
   observacaoAprovacao?: string;
+  aprovacoesArtes?: Partial<Record<"Feed" | "Stories" | "Banner", { status: "Aguardando aprovação" | "Aprovada" | "Ajustes solicitados"; observacao?: string; avaliadoPor?: string; avaliadoEm?: string }>>;
   inicio: string;
   fim: string;
   verba: number;
