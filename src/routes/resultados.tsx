@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ComparativoJRetail } from "@/components/ComparativoJRetail";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useApp, brl, num, CRITERIOS_GERAIS, mediaNotas } from "@/lib/store";
@@ -7,6 +9,7 @@ export const Route = createFileRoute("/resultados")({ head: pageHead("Resultados
 
 function Page() {
   const { s } = useApp();
+  const [aba,setAba] = useState<"geral"|"jretail"|"categorias"|"produtos"|"equipe"|"marketing">("geral");
   const mesAtual = new Date().toISOString().slice(0,7);
   const avaliacoesMes = s.avaliacoes.filter((a) => a.mes === mesAtual);
   const notasEquipe = avaliacoesMes.map((a) => (mediaNotas(a.gerais) + mediaNotas(a.funcao)) / 2);
@@ -32,7 +35,14 @@ function Page() {
 
   return (
     <>
-      <PageHeader title="Resultados" sub="Equipe, mídia paga, influencers, vendas e investimentos em uma visão consolidada" />
+      <PageHeader title="Relatórios" sub="Análises por área: JRetail, filiais, categorias, produtos, equipe e marketing." />
+      <nav className="mt-4 flex gap-2 overflow-x-auto pb-2" aria-label="Abas de relatórios">{([
+        ["geral","Visão geral"],["jretail","JRetail e filiais"],["categorias","Categorias"],["produtos","Produtos"],["equipe","Equipe"],["marketing","Marketing"]
+      ] as const).map(([id,label])=><button key={id} type="button" aria-current={aba===id?"page":undefined} onClick={()=>setAba(id)} className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold ${aba===id?"border-primary bg-primary text-primary-foreground":"border-border bg-background"}`}>{label}</button>)}</nav>
+      {aba==="jretail" && <div className="mt-4"><ComparativoJRetail /><Panel title="Histórico existente na Dashboard"><p className="text-sm text-muted-foreground">Os registros originais permanecem na Dashboard, com as datas e os relatórios de importação. A comparação acima usa os mesmos dados centrais e restringe as análises às 30 filiais cadastradas, sem E-Commerce ou CD.</p></Panel></div>}
+      {aba==="categorias" && <div className="mt-4"><Panel title="Categorias de produtos"><p className="text-sm text-muted-foreground">As participações por categoria e filial estão disponíveis nos arquivos exportados, mas ainda precisam de importação validada. Não serão exibidas estimativas.</p></Panel></div>}
+      {aba==="produtos" && <div className="mt-4"><Panel title="Produtos mais vendidos"><p className="text-sm text-muted-foreground">O ranking individual requer exportação JRetail no indicador Produto, com quantidade e valor por produto. Não há ranking de SKU nos relatórios importados atualmente.</p></Panel></div>}
+      {(aba==="geral"||aba==="equipe"||aba==="marketing") && <>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat accent label="Vendas" value={brl(vendas)} hint="base importada" />
@@ -67,6 +77,7 @@ function Page() {
           </div>
         </Panel>
       </div>
+      </>}
     </>
   );
 }
