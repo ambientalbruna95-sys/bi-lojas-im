@@ -118,6 +118,15 @@ function Page() {
     setTarefa({titulo:a.titulo, descricao:a.descricao || "", funcionarioId:a.funcionarioId, data:a.data, horario:a.horario || "", prioridade:a.prioridade || "Média"});
   };
   const campanhasPendentes = s.campanhas.filter((c) => c.aprovacao === "Aguardando Diretoria").sort((a,b)=>(a.inicio||"").localeCompare(b.inicio||""));
+  const artesPendentes = s.campanhas.flatMap((campanha) =>
+    (["Feed", "Stories", "Banner"] as const)
+      .filter((formato) => !!campanha.artes?.[formato] && !campanha.pecas[formato] && campanha.aprovacoesArtes?.[formato]?.status !== "Ajustes solicitados")
+      .map((formato) => ({ campanha, formato }))
+  );
+  const abrirArteParaAprovacao = (campanha: Campanha) => {
+    setSelId(campanha.id);
+    setAbaCampanha("Artes");
+  };
   const abrirParaAprovacao = (campanha: Campanha) => { setSelId(campanha.id); setAbaCampanha("Resumo"); setObservacaoRecusa(""); };
 
   const upd = (c: Campanha) => {
@@ -196,6 +205,16 @@ function Page() {
             <span className="mt-3 inline-block text-xs font-bold text-primary">Analisar campanha →</span>
           </button>)}
         </div> : <p className="text-sm text-muted-foreground">Nenhuma campanha aguardando aprovação no momento.</p>}
+      </Panel>}
+
+      {podeAprovar && <Panel title={`Artes aguardando aprovação · ${artesPendentes.length}`}>
+        {artesPendentes.length ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {artesPendentes.map(({ campanha, formato }) => <button key={`${campanha.id}-${formato}`} type="button" onClick={() => abrirArteParaAprovacao(campanha)} className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 text-left hover:border-primary/50">
+            <div className="font-bold">{campanha.nome}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{formato} · Aguardando análise</div>
+            <span className="mt-2 inline-block text-xs font-bold text-primary">Analisar arte →</span>
+          </button>)}
+        </div> : <p className="text-sm text-muted-foreground">Nenhuma arte aguardando aprovação.</p>}
       </Panel>}
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
