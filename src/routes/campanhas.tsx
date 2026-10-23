@@ -118,6 +118,15 @@ function Page() {
     setTarefa({titulo:a.titulo, descricao:a.descricao || "", funcionarioId:a.funcionarioId, data:a.data, horario:a.horario || "", prioridade:a.prioridade || "Média"});
   };
   const campanhasPendentes = s.campanhas.filter((c) => c.aprovacao === "Aguardando Diretoria").sort((a,b)=>(a.inicio||"").localeCompare(b.inicio||""));
+  const artesPendentes = s.campanhas.flatMap((campanha) =>
+    (["Feed", "Stories", "Banner"] as const)
+      .filter((formato) => !!campanha.artes?.[formato] && !campanha.pecas[formato] && campanha.aprovacoesArtes?.[formato]?.status !== "Ajustes solicitados")
+      .map((formato) => ({ campanha, formato }))
+  );
+  const abrirArteParaAprovacao = (campanha: Campanha) => {
+    setSelId(campanha.id);
+    setAbaCampanha("Artes");
+  };
   const abrirParaAprovacao = (campanha: Campanha) => { setSelId(campanha.id); setAbaCampanha("Resumo"); setObservacaoRecusa(""); };
 
   const upd = (c: Campanha) => {
@@ -196,6 +205,16 @@ function Page() {
             <span className="mt-3 inline-block text-xs font-bold text-primary">Analisar campanha →</span>
           </button>)}
         </div> : <p className="text-sm text-muted-foreground">Nenhuma campanha aguardando aprovação no momento.</p>}
+      </Panel>}
+
+      {podeAprovar && <Panel title={`Artes aguardando aprovação · ${artesPendentes.length}`}>
+        {artesPendentes.length ? <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {artesPendentes.map(({ campanha, formato }) => <button key={`${campanha.id}-${formato}`} type="button" onClick={() => abrirArteParaAprovacao(campanha)} className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3 text-left hover:border-primary/50">
+            <div className="font-bold">{campanha.nome}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{formato} · Aguardando análise</div>
+            <span className="mt-2 inline-block text-xs font-bold text-primary">Analisar arte →</span>
+          </button>)}
+        </div> : <p className="text-sm text-muted-foreground">Nenhuma arte aguardando aprovação.</p>}
       </Panel>}
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -511,7 +530,7 @@ function Page() {
                     {!podeAprovar && (sel.aprovacao === "Rascunho" || sel.aprovacao === "Ajustes solicitados") && <Btn onClick={() => { upd({ ...sel, aprovacao: "Aguardando Diretoria", observacaoAprovacao: undefined, aprovadoPor: undefined, aprovadoEm: undefined }); toast.success("Campanha enviada para aprovação da Diretoria."); }}><Send className="h-4 w-4" />Enviar para Diretoria</Btn>}
                     {podeAprovar && sel.aprovacao !== "Aprovada" && <Btn onClick={() => {
                       const usuario = s.usuarios.find((u) => u.id === s.usuarioAtivoId);
-                      upd({ ...sel, aprovacao: "Aprovada", observacaoAprovacao: undefined, aprovadoPor: usuario?.nome || "Diretoria", aprovadoEm: new Date().toISOString() });
+                      upd({ ...sel, aprovacao: "Aprovada", observacaoAprovacao: observacaoRecusa.trim() || undefined, aprovadoPor: usuario?.nome || "Diretoria", aprovadoEm: new Date().toISOString() });
                       toast.success("Campanha aprovada.");
                     }}><CheckCircle2 className="h-4 w-4" />Aprovar campanha</Btn>}
                     {podeAprovar && sel.aprovacao !== "Ajustes solicitados" && <Btn variant="outline" onClick={() => {
@@ -525,12 +544,12 @@ function Page() {
                   </div>
                 </div>
                 {podeAprovar && sel.aprovacao !== "Aprovada" && <div className="mt-4">
-                  <Field label="Justificativa da não aprovação (obrigatória para solicitar ajustes)">
-                    <textarea rows={3} className={inputCls} value={observacaoRecusa} onChange={(e) => setObservacaoRecusa(e.target.value)} placeholder="Explique o que precisa mudar: verba, ofertas, artes, período ou estratégia..." />
+                  <Field label="Observação da Diretoria (opcional ao aprovar; obrigatória ao solicitar ajustes)">
+                    <textarea rows={3} className={inputCls} value={observacaoRecusa} onChange={(e) => setObservacaoRecusa(e.target.value)} placeholder="Comentários sobre a campanha, ou explique o que precisa mudar antes de aprovar..." />
                   </Field>
                 </div>}
-                {sel.observacaoAprovacao && sel.aprovacao === "Ajustes solicitados" && <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
-                  <div className="font-bold">Motivo da não aprovação</div>
+                {sel.observacaoAprovacao && (sel.aprovacao === "Ajustes solicitados" || sel.aprovacao === "Aprovada") && <div className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-3 text-sm">
+                  <div className="font-bold">{sel.aprovacao === "Aprovada" ? "Observação da aprovação" : "Motivo da não aprovação"}</div>
                   <p className="mt-1 whitespace-pre-wrap">{sel.observacaoAprovacao}</p>
                 </div>}
               </Panel>
@@ -638,6 +657,26 @@ function Page() {
                   {FORMATOS.map((x) => {
                     const formato = x.k as FormatoPeca;
                     const temArte = !!sel.artes?.[formato];
+                    const aprovacaoArte = sel.aprovacoesArtes?.[formato];
+                    const observacaoArte = aprovacaoArte?.observacao || "";
+                    const registrarDecisaoArte = (status: "Aprovada" | "Ajustes solicitados") => {
+                      const motivo = (document.getElementById(`observacao-arte-${sel.id}-${formato}`) as HTMLTextAreaElement | null)?.value?.trim() || "";
+                      if (status === "Ajustes solicitados" && !motivo) {
+                        toast.error("Informe o que precisa ser corrigido na arte.");
+                        return;
+                      }
+                      const usuario = s.usuarios.find((u) => u.id === s.usuarioAtivoId);
+                      upd({
+                        ...sel,
+                        pecas: { ...sel.pecas, [formato]: status === "Aprovada" },
+                        aprovacoesArtes: {
+                          ...(sel.aprovacoesArtes || {}),
+                          [formato]: { status, observacao: motivo, avaliadoPor: usuario?.nome || "Diretoria", avaliadoEm: new Date().toISOString() },
+                        },
+                      });
+                      toast.success(status === "Aprovada" ? `Arte de ${formato} aprovada.` : `Ajustes solicitados para ${formato}.`);
+                    };
+
 
                     const carregarArte = (file?: File) => {
                       if (!file) return;
@@ -651,6 +690,7 @@ function Page() {
                           ...sel,
                           artes: { ...(sel.artes || {}), [formato]: String(reader.result || "") },
                           pecas: { ...sel.pecas, [formato]: false },
+                          aprovacoesArtes: { ...(sel.aprovacoesArtes || {}), [formato]: { status: "Aguardando aprovação" } },
                         });
                         toast.success(`Arte de ${formato} carregada para conferência.`);
                       };
@@ -676,17 +716,28 @@ function Page() {
                         <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={(e) => carregarArte(e.target.files?.[0])} />
                       </label>
 
-                      {temArte && <div className="flex gap-2">
+                      {temArte && <div className="space-y-2">
+                        {podeAprovar && <Field label={`Observações da Diretoria · ${formato}`}>
+                          <textarea key={`${sel.id}-${formato}-${aprovacaoArte?.avaliadoEm || "pending"}`} id={`observacao-arte-${sel.id}-${formato}`} rows={3} className={inputCls} defaultValue={observacaoArte} placeholder="Comente a aprovação ou explique os ajustes necessários..." />
+                        </Field>}
                         {podeAprovar
-                          ? <Btn variant={sel.pecas[formato] ? "primary" : "outline"} className="flex-1" onClick={() => upd({ ...sel, pecas: { ...sel.pecas, [formato]: !sel.pecas[formato] } })}>
-                              {sel.pecas[formato] ? <><Check className="h-4 w-4" />Aprovada</> : "Aprovar arte"}
-                            </Btn>
-                          : <div className="flex-1 rounded-xl border border-white/8 p-2.5 text-center text-xs text-muted-foreground">{sel.pecas[formato] ? "✓ Aprovada pela Diretoria" : "Aguardando aprovação"}</div>}
+                          ? <div className="flex flex-wrap gap-2">
+                              <Btn className="flex-1" onClick={() => registrarDecisaoArte("Aprovada")}><Check className="h-4 w-4" />Aprovar arte</Btn>
+                              <Btn variant="outline" className="flex-1" onClick={() => registrarDecisaoArte("Ajustes solicitados")}>Solicitar ajustes</Btn>
+                            </div>
+                          : <div className="rounded-xl border border-white/8 p-2.5 text-center text-xs text-muted-foreground">{sel.pecas[formato] ? "✓ Aprovada pela Diretoria" : aprovacaoArte?.status || "Aguardando aprovação"}</div>}
+                        {aprovacaoArte?.status && aprovacaoArte.status !== "Aguardando aprovação" && <div className="rounded-xl border border-white/10 p-3 text-xs">
+                          <strong>{aprovacaoArte.status}</strong>{aprovacaoArte.avaliadoPor ? ` · ${aprovacaoArte.avaliadoPor}` : ""}
+                          {aprovacaoArte.avaliadoEm ? ` · ${new Date(aprovacaoArte.avaliadoEm).toLocaleString("pt-BR")}` : ""}
+                          {observacaoArte && <p className="mt-1 whitespace-pre-wrap">{observacaoArte}</p>}
+                        </div>}
                         <Btn variant="danger" onClick={() => {
                           const artes = { ...(sel.artes || {}) };
                           delete artes[formato];
-                          upd({ ...sel, artes, pecas: { ...sel.pecas, [formato]: false } });
-                        }}><Trash2 className="h-4 w-4" /></Btn>
+                          const aprovacoesArtes = { ...(sel.aprovacoesArtes || {}) };
+                          delete aprovacoesArtes[formato];
+                          upd({ ...sel, artes, aprovacoesArtes, pecas: { ...sel.pecas, [formato]: false } });
+                        }}><Trash2 className="h-4 w-4" />Remover arte</Btn>
                       </div>}
                     </div>;
                   })}
